@@ -335,6 +335,9 @@ class HudV18Activity : AppCompatActivity() {
         btn("K:GPS") { gpsSetBeijing() }
         btn("L:Rte") { gpsStartRoute() }
         btn("M:GP-") { gpsStopRoute() }
+        btn("T:SIG") { probeTestDeviceSigs() }
+        btn("T:WRT") { testWriteProbeAll() }
+        btn("T:EZ") { tstEasyNaviChain() }
 
         // === Utils ===
         btn("N:Log") { exportLog() }
@@ -725,6 +728,169 @@ class HudV18Activity : AppCompatActivity() {
     private fun tstScreenOff() {
         log("TST: HUD screen = 0 (off) via TestDevice")
         canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 0)
+    }
+
+    // === T:SIG — dump TestDevice API signatures ===
+
+    private fun probeTestDeviceSigs() {
+        Thread {
+            log("=== T:SIG: TestDevice API ===")
+            try {
+                val cls = Class.forName("android.hardware.bydauto.test.BYDAutoTestDevice")
+                val gi = cls.getDeclaredMethod("getInstance", Context::class.java)
+                gi.isAccessible = true
+                val td = gi.invoke(null, this@HudV18Activity)
+                if (td == null) { log("T:SIG: getInstance() = null"); return@Thread }
+                log("T:SIG: class=${td.javaClass.name}")
+                val methods = td.javaClass.methods.sortedBy { it.name }
+                for (m in methods) {
+                    val p = m.parameterTypes.map { it.simpleName }.joinToString(", ")
+                    log("T:SIG: ${m.name}($p) -> ${m.returnType.simpleName}")
+                }
+                log("=== T:SIG DONE (${methods.size} methods) ===")
+            } catch (t: Throwable) {
+                log("T:SIG ERR: ${t.message}")
+            }
+        }.start()
+    }
+
+    // === T:WRT — systematic FID write/read probe ===
+
+    private fun testWriteProbeAll() {
+        Thread {
+            log("=== T:WRT: Systematic FID probe ===")
+            val probes = arrayOf(
+                // Phase 1: Switches (включатели ПЕРВЫМИ)
+                "ATOM_HUD(ON)" to (0x0780E026 to 1),
+                "ATOM_HUD(OFF)" to (0x0780E026 to 0),
+                "DRIVING_INFO_SW(ON)" to (0x3A20000A to 1),
+                "DISPLAY_FC_CONFIG(1)" to (0x38B00042 to 1),
+                "DRIVING_AMBIENT_SET(1)" to (0x32B1102C to 1),
+                "NAVI_FUSION(1)" to (0x4C10E036 to 1),
+                "NAVI_SCREEN(2=UI7)" to (0x4C10E015 to 2),
+                "NAVI_SCREEN(3=Amap)" to (0x4C10E015 to 3),
+                "NAVI_TYPE(1=Amap)" to (0x4C10A018 to 1),
+                "NAVI_CORP(1)" to (0x4CA00048 to 1),
+                // Phase 2: Navi status
+                "DEST_STATUS(1)" to (0x43E00038 to 1),
+                "NAVI_STATUS(2=Act)" to (0x43E0003A to 2),
+                // Phase 3: Guidance
+                "GUIDE_SIMPLE(R,100)" to (0x43F01010 to 3),
+                "CROSS_DIST(500)" to (0x43F01018 to 500),
+                "GUIDE_ROAD_AHEAD(L)" to (0x43F01030 to 1),
+                "GUIDE_ADV_ACTION" to (0x43F08030 to 3),
+                "NAVI_LEAD_MSG_ADV" to (0x43F08010 to 2),
+                "DIST_TARGET_ADV(500)" to (0x43F08018 to 500),
+                // Phase 4: Trip info
+                "TRIP_HOUR(0)" to (0x43F02010 to 0),
+                "TRIP_MIN(15)" to (0x43F02018 to 15),
+                "TRIP_SEC(0)" to (0x43F0201E to 0),
+                "TRIP_MILEAGE(50000)" to (0x43F02028 to 50000),
+                "DRIVING_DAY(0)" to (0x43F02024 to 0),
+                "ARRIVE_HOUR(14)" to (0x43F09018 to 14),
+                "ARRIVE_MIN(30)" to (0x43F09020 to 30),
+                "ARRIVE_SEC(0)" to (0x43F09028 to 0),
+                // Phase 5: HUD projection
+                "CENTER_PROJ(1)" to (0x40C0C010 to 1),
+                "CENTER_PROJ2(1)" to (0x40C0C022 to 1),
+                "FALLBACK_ILLU(0)" to (0x40C0C019 to 0),
+                // Phase 6: EASY_NAVI channel
+                "EASY_GUIDE(T=1,D=100)" to (0x1F701010 to 1),
+                "EASY_ENTRY_ACT(1)" to (0x1F704010 to 1),
+                "DIST_TARGET_HEAD(200)" to (0x1F701018 to 200),
+                "DIST_TARGET_UNIT(0=M)" to (0x1F701030 to 0),
+                "DIST_UNIT_TYPE(0)" to (0x1F704030 to 0),
+                "EXP_ARR_DAY(0)" to (0x1F705010 to 0),
+                "EXP_ARR_HOUR(14)" to (0x1F705018 to 14),
+                "EXP_ARR_MIN(30)" to (0x1F705020 to 30),
+                "EXP_ARR_SEC(0)" to (0x1F705028 to 0),
+                // Phase 7: Lane + traffic
+                "DIST_TRAFFIC_LIGHT(500)" to (0x43F11010 to 500),
+                "SETTING_SPEED_LIMIT(60)" to (0x4CA00040 to 60),
+                // Phase 8: Close
+                "NAVI_STATUS(4=Off)" to (0x43E0003A to 4),
+                "NAVI_SCREEN(0=Off)" to (0x4C10E015 to 0),
+            )
+
+            var changedCount = 0
+            for ((name, pair) in probes) {
+                val (fid, value) = pair
+                try {
+                    val before = canGet(fid)
+                    Thread.sleep(30L)
+                    canSet(fid, value)
+                    Thread.sleep(150L)
+                    val after = canGet(fid)
+                    val marker = if (before != after) { changedCount++; "\uD83D\uDD25" } else "\u2014"
+                    log("T:WRT $marker $name FID=0x${Integer.toHexString(fid)} val=$value before=$before after=$after")
+                } catch (t: Throwable) {
+                    log("T:WRT \u2716 $name ERR: ${t.message?.take(60)}")
+                }
+            }
+            log("=== T:WRT DONE ($changedCount FIDs changed) ===")
+            log("LOOK AT HUD + cluster for visible changes!")
+        }.start()
+    }
+
+    // === T:EZ — EASY_NAVI + CENTER_PROJECTION chain ===
+
+    private fun tstEasyNaviChain() {
+        log("=== T:EZ: EASY_NAVI + CENTER_PROJ chain ===")
+        Thread {
+            log("[T:EZ 1] Switches: ATOM_HUD=1 + DRIVING_INFO=1 + NAVI_FUSION=1")
+            canSet(0x0780E026, 1)
+            canSet(0x3A20000A, 1)
+            canSet(0x4C10E036, 1)
+            Thread.sleep(200L)
+
+            log("[T:EZ 2] Layout: DISPLAY_FC=1 + AMBIENT=1 + NAVI_SCREEN=2")
+            canSet(0x38B00042, 1)
+            canSet(0x32B1102C, 1)
+            canSet(0x4C10E015, 2)
+            Thread.sleep(300L)
+
+            log("[T:EZ 3] Navi: DEST=1 + NAVI_ACTIVE=2")
+            canSet(0x43E00038, 1)
+            canSet(0x43E0003A, 2)
+            Thread.sleep(300L)
+
+            log("[T:EZ 4] Guidance: SIMPLE(R,500)")
+            canSet(0x43F01010, 3)
+            canSet(0x43F01018, 500)
+            Thread.sleep(300L)
+
+            log("[T:EZ 5] Road name 'Beijing Rd' UTF-16LE")
+            val bytes = "Beijing Rd".toByteArray(Charsets.UTF_16LE)
+            canSetBytes(0x43FA1008, bytes)
+            Thread.sleep(300L)
+
+            log("[T:EZ 6] Trip: 0h 15m 0s 50km")
+            canSet(0x43F02010, 0)
+            canSet(0x43F02018, 15)
+            canSet(0x43F0201E, 0)
+            canSet(0x43F02028, 50000)
+            Thread.sleep(300L)
+
+            log("[T:EZ 7] EASY_NAVI: guide T=1 dist=100 + entry=1 + target=200")
+            canSet(0x1F701010, 1)
+            canSet(0x1F701018, 200)
+            canSet(0x1F701030, 0)
+            canSet(0x1F704010, 1)
+            canSet(0x1F704030, 0)
+            Thread.sleep(300L)
+
+            log("[T:EZ 8] CENTER_PROJ=1 + PROJ2=1")
+            canSet(0x40C0C010, 1)
+            canSet(0x40C0C022, 1)
+            Thread.sleep(300L)
+
+            log("[T:EZ 9] Traffic light dist + speed limit")
+            canSet(0x43F11010, 500)
+            canSet(0x4CA00040, 60)
+            Thread.sleep(300L)
+
+            log("[T:EZ] === DONE === CHECK HUD! ===")
+        }.start()
     }
 
     // === Instrument Device path (EXACT AmapService API) ===
