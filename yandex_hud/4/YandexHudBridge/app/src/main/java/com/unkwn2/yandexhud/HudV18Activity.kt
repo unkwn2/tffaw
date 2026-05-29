@@ -287,7 +287,7 @@ class HudV18Activity : AppCompatActivity() {
         }
 
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(4, 4, 4, 4) }
-        val status = TextView(this).apply { text = "v18.2 — HUD Nav (TestDevice primary, hardcoded FIDs)"; textSize = 13f; setTextColor(0xFFFFFFFF.toInt()); setBackgroundColor(0xFF333333.toInt()); setPadding(8, 4, 8, 4) }
+        val status = TextView(this).apply { text = "v19.5 — HUD Nav (ATOM_HUD + T:WRT probe)"; textSize = 13f; setTextColor(0xFFFFFFFF.toInt()); setBackgroundColor(0xFF333333.toInt()); setPadding(8, 4, 8, 4) }
         root.addView(status)
 
         val logPanel = ScrollView(this)
@@ -348,6 +348,7 @@ class HudV18Activity : AppCompatActivity() {
         btn("T:SIG") { probeTestDeviceSigs() }
         btn("T:WRT") { testWriteProbeAll() }
         btn("T:EZ") { tstEasyNaviChain() }
+        btn("T6:ATOM") { tstAtomActivate() }
 
         // === Utils ===
         btn("N:Log") { exportLog() }
@@ -359,10 +360,10 @@ class HudV18Activity : AppCompatActivity() {
         root.addView(btnScroll, btnLp)
 
         setContentView(root)
-        log("v18.2 ready — uid=${android.os.Process.myUid()}")
-        log("HARDCODED FIDs: AmapService confirmed values")
-        log("PRIMARY: TestDevice (only working device for uid 10168)")
-        log("Priority: TestDevice > CBroadcast > Proxy > Instrument/Setting")
+        log("v19.5 ready — uid=${android.os.Process.myUid()}")
+        log("HARDCODED FIDs: AmapService + ATOM_HUD + CENTER_PROJ + EASY_NAVI")
+        log("PRIMARY: TestDevice (Instrument/Setting blocked for this uid)")
+        log("Priority: TestDevice > T:WRT probe > CBroadcast > Proxy")
     }
 
     override fun onDestroy() {
@@ -492,20 +493,46 @@ class HudV18Activity : AppCompatActivity() {
 
     private fun readBaseline() {
         log("=== READ BASELINE (get on all devices) ===")
+        // Existing 19 FIDs
         for ((name, fid) in FIDs.fields()) {
             if (fid == 0) continue
-            val prefix = (fid shr 16) and 0xFFFF
-            when {
-                prefix == 0x4C10 || prefix == 0x38B0 -> {
-                    devGet(settingDev, fid, "Sett")
-                }
-                prefix == 0x43E0 || prefix == 0x43F0 || prefix == 0x43FA || prefix == 0x43FB -> {
-                    devGet(instrumentDev, fid, "Inst")
-                }
-            }
-            devGet(testDev, fid, "Test")
+            readBaselineFid(fid, name)
         }
+        // New FIDs from msg 52 analysis
+        val extraFids = listOf(
+            "ATOM_HUD_SWITCH" to 0x0780E026,
+            "CENTER_PROJECTION" to 0x40C0C010,
+            "CENTER_PROJECTION2" to 0x40C0C022,
+            "FALLBACK_ILLUSTRATION" to 0x40C0C019,
+            "EASY_NAVI_GUIDE" to 0x1F701010,
+            "EASY_ENTRY_ACTION" to 0x1F704010,
+            "DIST_TARGET_HEAD" to 0x1F701018,
+            "DRIVING_INFO_SWITCH" to 0x3A20000A,
+            "DISPLAY_CONTENT_FC" to 0x38B00042,
+            "DRIVING_AMBIENT_SET" to 0x32B1102C,
+            "NAVI_TYPE_SET" to 0x4C10A018,
+            "NAVI_CORP_SET" to 0x4CA00048,
+            "SPEED_LIMIT_SET" to 0x4CA00040,
+            "DIST_TRAFFIC_LIGHT" to 0x43F11010
+        )
+        for ((name, fid) in extraFids) {
+            readBaselineFid(fid, name)
+        }
+        // Save current HUD layout
+        val curLayout = canGet(0x4C10E015)
+        if (curLayout in 0..10) { savedLayoutBeforeTest = curLayout; log(" saved layout (TST) = $curLayout") }
         log("BASELINE DONE — if get() works but set() doesn't, COMMON permission = read-only")
+    }
+
+    private fun readBaselineFid(fid: Int, name: String) {
+        val prefix = (fid shr 16) and 0xFFFF
+        when {
+            prefix == 0x4C10 || prefix == 0x4CA0 || prefix == 0x38B0 -> devGet(settingDev, fid, "Sett $name")
+            prefix == 0x43E0 || prefix == 0x43F0 || prefix == 0x43FA || prefix == 0x43FB -> devGet(instrumentDev, fid, "Inst $name")
+            prefix == 0x0780 || prefix == 0x40C0 || prefix == 0x1F70 || prefix == 0x3A20 || prefix == 0x32B1 -> devGet(testDev, fid, "Atom $name")
+            else -> devGet(testDev, fid, "Test $name")
+        }
+        devGet(testDev, fid, "Test $name")
     }
 
     // === Event listener subscription ===
@@ -960,6 +987,56 @@ class HudV18Activity : AppCompatActivity() {
             Thread.sleep(300L)
 
             log("[T:EZ] === DONE === CHECK HUD! ===")
+        }.start()
+    }
+
+    // === T6:ATOM — ATOM_HUD_SWITCH + backup CENTER_PROJECTION chain ===
+
+    private fun tstAtomActivate() {
+        log("=== T6:ATOM — ATOM_HUD_SWITCH main toggle ===")
+        Thread {
+            val atomFid = 0x0780E026
+            val before = tryRead(testDev, atomFid)
+            log(" ATOM_HUD before: $before")
+
+            log("[ATOM 1] ATOM_HUD_SWITCH=1 (ON)")
+            canSet(atomFid, 1)
+            Thread.sleep(500L)
+            val after1 = tryRead(testDev, atomFid)
+            log(" ATOM_HUD after ON: $after1")
+
+            log("[ATOM 2] CENTER_PROJECTION=1 (backup HUD channel)")
+            canSet(0x40C0C010, 1)
+            Thread.sleep(200L)
+
+            log("[ATOM 3] NAVIGATION_FUSION=1")
+            canSet(0x4C10E036, 1)
+            Thread.sleep(200L)
+
+            log("[ATOM 4] Layout=2 + naviActive=2 + guidance")
+            canSet(0x4C10E015, 2)
+            canSet(0x43E0003A, 2)
+            canSet(0x43F01010, 3)
+            canSet(0x43F01018, 500)
+            Thread.sleep(200L)
+
+            log("[ATOM 5] Road name + trip info")
+            val bytes = "Beijing Rd".toByteArray(Charsets.UTF_16LE)
+            canSetBytes(0x43FA1008, bytes)
+            canSet(0x43F02010, 0)
+            canSet(0x43F02018, 15)
+            canSet(0x43F02028, 50000)
+            Thread.sleep(300L)
+
+            log("[ATOM 6] ATOM_HUD_SWITCH=0 (OFF) — verify toggle works")
+            canSet(atomFid, 0)
+            Thread.sleep(200L)
+            val after0 = tryRead(testDev, atomFid)
+            log(" ATOM_HUD after OFF: $after0")
+
+            if (before != after1) log("\uD83D\uDD25 ATOM_HUD TOGGLE WORKS! $before\u2192$after1\u2192$after0")
+            else log("\u2744\uFE0F ATOM_HUD toggle frozen: $before\u2192$after1\u2192$after0")
+            log("=== T6:ATOM DONE — CHECK HUD! ===")
         }.start()
     }
 
@@ -1700,7 +1777,7 @@ class HudV18Activity : AppCompatActivity() {
             val src = FileLogger.getFile() ?: return log("No log file")
             val dir = android.os.Environment.getExternalStorageDirectory()
             val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(java.util.Date())
-            val dst = java.io.File(dir, "Download/yandex_hud_v182_${ts}.log")
+            val dst = java.io.File(dir, "Download/yandex_hud_v195_${ts}.log")
             src.copyTo(dst, overwrite = true)
             log("Exported to ${dst.absolutePath}")
         } catch (t: Throwable) {
