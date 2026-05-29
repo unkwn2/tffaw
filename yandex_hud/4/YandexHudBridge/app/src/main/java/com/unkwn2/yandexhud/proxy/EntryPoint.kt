@@ -110,7 +110,6 @@ class EntryPoint {
                 writeHandshakeFile()
 
                 flog("entering Looper.loop()")
-                android.os.Looper.prepareMainLooper()
                 android.os.Looper.loop()
             } catch (t: Throwable) {
                 flog("FATAL CRASH in main:")
