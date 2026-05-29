@@ -70,7 +70,17 @@ class HudV18Activity : AppCompatActivity() {
             "INSTRUMENT_EXPECTED_ARRIVE_SECOND_SET" to 0x43F09028,
             "INSTRUMENT_DISTANCE_OF_TARGET_AHEAD_ADVANCED_SET" to 0x43F08018,
             "INSTRUMENT_NAVI_LEAD_MSG_ADVANCED_SET" to 0x43F08010,
-            "SETTING_MPC_IFC_NAVI_ST_SET" to 0x4CA0004B
+            "SETTING_MPC_IFC_NAVI_ST_SET" to 0x4CA0004B,
+            "ATOM_HUD_SWITCH" to 0x0780E026,
+            "CENTER_PROJECTION_SWITCH" to 0x40C0C010,
+            "CENTER_PROJECTION2_SWITCH" to 0x40C0C022,
+            "FALLBACK_ILLUSTRATION_SET" to 0x40C0C019,
+            "EASY_NAVI_GUIDE_SET" to 0x1F701010,
+            "EASY_ENTRY_ACTION_SET" to 0x1F704010,
+            "DIST_TARGET_HEAD_SET" to 0x1F701018,
+            "NAVI_TYPE_SET" to 0x4C10A018,
+            "SETTING_NAVI_CORP_SET" to 0x4CA00048,
+            "SPEED_LIMIT_SET" to 0x4CA00040
         )
 
         fun get(name: String): Int = fieldMap[name] ?: HARDCODED[name] ?: 0
@@ -733,114 +743,174 @@ class HudV18Activity : AppCompatActivity() {
     // === T:SIG — dump TestDevice API signatures ===
 
     private fun probeTestDeviceSigs() {
+        log("=== T:SIG: TestDevice/BYDAutoEventValue/AbsBYDAutoDevice API ===")
         Thread {
-            log("=== T:SIG: TestDevice API ===")
             try {
                 val cls = Class.forName("android.hardware.bydauto.test.BYDAutoTestDevice")
-                val gi = cls.getDeclaredMethod("getInstance", Context::class.java)
-                gi.isAccessible = true
-                val td = gi.invoke(null, this@HudV18Activity)
-                if (td == null) { log("T:SIG: getInstance() = null"); return@Thread }
-                log("T:SIG: class=${td.javaClass.name}")
-                val methods = td.javaClass.methods.sortedBy { it.name }
-                for (m in methods) {
-                    val p = m.parameterTypes.map { it.simpleName }.joinToString(", ")
-                    log("T:SIG: ${m.name}($p) -> ${m.returnType.simpleName}")
+                log(" class: ${cls.name}")
+                log(" superclass: ${cls.superclass?.name}")
+                val seen = java.util.HashSet<String>()
+                var c: Class<*>? = cls
+                while (c != null && c.name != "java.lang.Object") {
+                    for (m in c.declaredMethods.sortedBy { it.name }) {
+                        val sig = "${m.name}(${m.parameterTypes.map { it.simpleName }.joinToString(",")}):${m.returnType.simpleName}"
+                        if (seen.add(sig)) log(" ${c.simpleName}.$sig mods=${java.lang.reflect.Modifier.toString(m.modifiers)}")
+                    }
+                    c = c.superclass
                 }
-                log("=== T:SIG DONE (${methods.size} methods) ===")
+                for (f in cls.declaredFields) {
+                    log(" field: ${f.name}: ${f.type.simpleName} mods=${java.lang.reflect.Modifier.toString(f.modifiers)}")
+                }
+
+                val abs = Class.forName("android.hardware.bydauto.AbsBYDAutoDevice")
+                log(" --- AbsBYDAutoDevice ---")
+                for (m in abs.declaredMethods.sortedBy { it.name }) {
+                    log(" Abs.${m.name}(${m.parameterTypes.map { it.simpleName }.joinToString(",")}):${m.returnType.simpleName}")
+                }
+
+                val ev = Class.forName("android.hardware.bydauto.BYDAutoEventValue")
+                log(" --- BYDAutoEventValue fields ---")
+                for (f in ev.declaredFields) log(" ${f.name}: ${f.type.simpleName} mods=${java.lang.reflect.Modifier.toString(f.modifiers)}")
+                for (m in ev.declaredMethods.filter { !it.name.startsWith("access$") }.sortedBy { it.name }) {
+                    log(" EV.${m.name}(${m.parameterTypes.map { it.simpleName }.joinToString(",")}):${m.returnType.simpleName}")
+                }
             } catch (t: Throwable) {
-                log("T:SIG ERR: ${t.message}")
+                log("T:SIG ERR: ${t.javaClass.simpleName}: ${t.message}")
             }
+            log("=== T:SIG DONE ===")
         }.start()
     }
 
-    // === T:WRT — systematic FID write/read probe ===
+    // === T:WRT — systematic FID write/read probe (enhanced) ===
 
     private fun testWriteProbeAll() {
         Thread {
-            log("=== T:WRT: Systematic FID probe ===")
-            val probes = arrayOf(
-                // Phase 1: Switches (включатели ПЕРВЫМИ)
-                "ATOM_HUD(ON)" to (0x0780E026 to 1),
-                "ATOM_HUD(OFF)" to (0x0780E026 to 0),
-                "DRIVING_INFO_SW(ON)" to (0x3A20000A to 1),
-                "DISPLAY_FC_CONFIG(1)" to (0x38B00042 to 1),
-                "DRIVING_AMBIENT_SET(1)" to (0x32B1102C to 1),
-                "NAVI_FUSION(1)" to (0x4C10E036 to 1),
-                "NAVI_SCREEN(2=UI7)" to (0x4C10E015 to 2),
-                "NAVI_SCREEN(3=Amap)" to (0x4C10E015 to 3),
-                "NAVI_TYPE(1=Amap)" to (0x4C10A018 to 1),
-                "NAVI_CORP(1)" to (0x4CA00048 to 1),
-                // Phase 2: Navi status
-                "DEST_STATUS(1)" to (0x43E00038 to 1),
-                "NAVI_STATUS(2=Act)" to (0x43E0003A to 2),
-                // Phase 3: Guidance
-                "GUIDE_SIMPLE(R,100)" to (0x43F01010 to 3),
-                "CROSS_DIST(500)" to (0x43F01018 to 500),
-                "GUIDE_ROAD_AHEAD(L)" to (0x43F01030 to 1),
-                "GUIDE_ADV_ACTION" to (0x43F08030 to 3),
-                "NAVI_LEAD_MSG_ADV" to (0x43F08010 to 2),
-                "DIST_TARGET_ADV(500)" to (0x43F08018 to 500),
-                // Phase 4: Trip info
-                "TRIP_HOUR(0)" to (0x43F02010 to 0),
-                "TRIP_MIN(15)" to (0x43F02018 to 15),
-                "TRIP_SEC(0)" to (0x43F0201E to 0),
-                "TRIP_MILEAGE(50000)" to (0x43F02028 to 50000),
-                "DRIVING_DAY(0)" to (0x43F02024 to 0),
-                "ARRIVE_HOUR(14)" to (0x43F09018 to 14),
-                "ARRIVE_MIN(30)" to (0x43F09020 to 30),
-                "ARRIVE_SEC(0)" to (0x43F09028 to 0),
-                // Phase 5: HUD projection
-                "CENTER_PROJ(1)" to (0x40C0C010 to 1),
-                "CENTER_PROJ2(1)" to (0x40C0C022 to 1),
-                "FALLBACK_ILLU(0)" to (0x40C0C019 to 0),
-                // Phase 6: EASY_NAVI channel
-                "EASY_GUIDE(T=1,D=100)" to (0x1F701010 to 1),
-                "EASY_ENTRY_ACT(1)" to (0x1F704010 to 1),
-                "DIST_TARGET_HEAD(200)" to (0x1F701018 to 200),
-                "DIST_TARGET_UNIT(0=M)" to (0x1F701030 to 0),
-                "DIST_UNIT_TYPE(0)" to (0x1F704030 to 0),
-                "EXP_ARR_DAY(0)" to (0x1F705010 to 0),
-                "EXP_ARR_HOUR(14)" to (0x1F705018 to 14),
-                "EXP_ARR_MIN(30)" to (0x1F705020 to 30),
-                "EXP_ARR_SEC(0)" to (0x1F705028 to 0),
-                // Phase 7: Lane + traffic
-                "DIST_TRAFFIC_LIGHT(500)" to (0x43F11010 to 500),
-                "SETTING_SPEED_LIMIT(60)" to (0x4CA00040 to 60),
-                // Phase 8: Close
-                "NAVI_STATUS(4=Off)" to (0x43E0003A to 4),
-                "NAVI_SCREEN(0=Off)" to (0x4C10E015 to 0),
+            log("=== T:WRT: Systematic FID probe (3-value) ===")
+
+            val switchFids = listOf(
+                "ATOM_HUD" to 0x0780E026,
+                "DRIVING_INFO" to 0x3A20000A,
+                "DISPLAY_FC" to 0x38B00042,
+                "DRIVING_AMBIENT" to 0x32B1102C,
+                "NAVI_FUSION" to 0x4C10E036,
+                "NAVI_SCREEN" to 0x4C10E015,
+                "NAVI_TYPE" to 0x4C10A018,
+                "NAVI_CORP" to 0x4CA00048,
+                "CENTER_PROJ" to 0x40C0C010,
+                "CENTER_PROJ2" to 0x40C0C022
             )
 
-            var changedCount = 0
-            for ((name, pair) in probes) {
+            val changed = mutableListOf<String>()
+            val frozen = mutableListOf<String>()
+            val errors = mutableListOf<String>()
+
+            // Phase 1: Switch FIDs — пробуем [0, 1, 2]
+            for ((name, fid) in switchFids) {
+                for (v in listOf(0, 1, 2)) {
+                    try {
+                        val beforeTest = tryRead(testDev, fid)
+                        Thread.sleep(30L)
+                        canSet(fid, v)
+                        Thread.sleep(150L)
+                        val afterTest = tryRead(testDev, fid)
+                        val afterSett = tryRead(settingDev, fid)
+                        val afterInst = tryRead(instrumentDev, fid)
+                        val m = if (beforeTest != afterTest || afterSett != -1 && afterSett != beforeTest || afterInst != -1 && afterInst != beforeTest) "\uD83D\uDD25" else "\u2014"
+                        if (m == "\uD83D\uDD25") changed.add("$name(v=$v) T:$beforeTest\u2192$afterTest S:$afterSett I:$afterInst")
+                        log("T:WRT $m $name FID=0x${Integer.toHexString(fid)} v=$v T:$beforeTest\u2192$afterTest S:$afterSett I:$afterInst")
+                    } catch (t: Throwable) {
+                        val err = "$name(v=$v) ${t.message?.take(60)}"
+                        errors.add(err)
+                        log("T:WRT \u2716 $err")
+                    }
+                }
+                // Восстанавливаем значение
+                canSet(fid, 0)
+                Thread.sleep(100L)
+            }
+
+            // Phase 2: Data FIDs — пишем значения
+            val dataFids = listOf(
+                "DEST_STATUS(1)" to (0x43E00038 to 1),
+                "NAVI_STATUS(2)" to (0x43E0003A to 2),
+                "GUIDE_SIMPLE(3)" to (0x43F01010 to 3),
+                "CROSS_DIST(500)" to (0x43F01018 to 500),
+                "TRIP_HOUR(0)" to (0x43F02010 to 0),
+                "TRIP_MIN(15)" to (0x43F02018 to 15),
+                "TRIP_MILEAGE(50000)" to (0x43F02028 to 50000),
+                "EASY_GUIDE(1)" to (0x1F701010 to 1),
+                "EASY_ENTRY(1)" to (0x1F704010 to 1),
+                "DIST_TARGET(200)" to (0x1F701018 to 200),
+                "EXP_ARR_HOUR(14)" to (0x1F705018 to 14),
+                "SPEED_LIMIT(60)" to (0x4CA00040 to 60),
+                "TRAFFIC_LIGHT(500)" to (0x43F11010 to 500),
+                "FALLBACK(0)" to (0x40C0C019 to 0),
+                "NAVI_STATUS(4=Off)" to (0x43E0003A to 4),
+                "NAVI_SCREEN(0=Off)" to (0x4C10E015 to 0)
+            )
+
+            for ((name, pair) in dataFids) {
                 val (fid, value) = pair
                 try {
-                    val before = canGet(fid)
-                    Thread.sleep(30L)
+                    val beforeTest = tryRead(testDev, fid)
+                    val beforeSett = tryRead(settingDev, fid)
                     canSet(fid, value)
                     Thread.sleep(150L)
-                    val after = canGet(fid)
-                    val marker = if (before != after) { changedCount++; "\uD83D\uDD25" } else "\u2014"
-                    log("T:WRT $marker $name FID=0x${Integer.toHexString(fid)} val=$value before=$before after=$after")
+                    val afterTest = tryRead(testDev, fid)
+                    val afterSett = tryRead(settingDev, fid)
+                    val m = if (beforeTest != afterTest || beforeSett != afterSett) "\uD83D\uDD25" else "\u2014"
+                    if (m == "\uD83D\uDD25") changed.add("$name T:$beforeTest\u2192$afterTest S:$beforeSett\u2192$afterSett")
+                    else frozen.add(name)
+                    log("T:WRT $m $name FID=0x${Integer.toHexString(fid)} v=$value T:${beforeTest}\u2192${afterTest} S:${beforeSett}\u2192${afterSett}")
                 } catch (t: Throwable) {
+                    errors.add("$name: ${t.message?.take(60)}")
                     log("T:WRT \u2716 $name ERR: ${t.message?.take(60)}")
                 }
             }
-            log("=== T:WRT DONE ($changedCount FIDs changed) ===")
-            log("LOOK AT HUD + cluster for visible changes!")
+
+            // Summary
+            log("=== T:WRT SUMMARY ===")
+            log("\uD83D\uDD25 CHANGED (${changed.size}):")
+            changed.forEach { log("  $it") }
+            if (frozen.isNotEmpty()) {
+                log("\u2744\uFE0F FROZEN (${frozen.size} — write OK but read unchanged):")
+                frozen.forEach { log("  $it") }
+            }
+            if (errors.isNotEmpty()) {
+                log("\u274C ERR (${errors.size}):")
+                errors.forEach { log("  $it") }
+            }
+            log("=== LOOK AT HUD + cluster for visible changes! ===")
         }.start()
+    }
+
+    private fun tryRead(dev: Any?, fid: Int): Int {
+        if (dev == null) return -1
+        return try {
+            val absCls = Class.forName("android.hardware.bydauto.AbsBYDAutoDevice")
+            val getM = absCls.getDeclaredMethod("get", IntArray::class.java)
+            getM.isAccessible = true
+            val r = getM.invoke(dev, intArrayOf(fid))
+            when (r) {
+                is Int -> r
+                is Long -> r.toInt()
+                else -> -2
+            }
+        } catch (_: Throwable) { -1 }
     }
 
     // === T:EZ — EASY_NAVI + CENTER_PROJECTION chain ===
 
     private fun tstEasyNaviChain() {
-        log("=== T:EZ: EASY_NAVI + CENTER_PROJ chain ===")
+        log("=== T:EZ: EASY_NAVI + CENTER_PROJ (AmapService order) ===")
         Thread {
-            log("[T:EZ 1] Switches: ATOM_HUD=1 + DRIVING_INFO=1 + NAVI_FUSION=1")
+            log("[T:EZ 0] NAVIGATION_FUSION=1 — CRITICAL first step!")
+            canSet(0x4C10E036, 1)
+            Thread.sleep(200L)
+
+            log("[T:EZ 1] ATOM_HUD=1 + DRIVING_INFO=1")
             canSet(0x0780E026, 1)
             canSet(0x3A20000A, 1)
-            canSet(0x4C10E036, 1)
             Thread.sleep(200L)
 
             log("[T:EZ 2] Layout: DISPLAY_FC=1 + AMBIENT=1 + NAVI_SCREEN=2")
