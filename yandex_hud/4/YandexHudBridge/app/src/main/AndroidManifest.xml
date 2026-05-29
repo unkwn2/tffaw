@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.BYDAUTO_INSTRUMENT_COMMON" />
+    <uses-permission android:name="android.permission.BYDAUTO_INSTRUMENT_SET" />
+    <uses-permission android:name="android.permission.BYDAUTO_INSTRUMENT_GET" />
+    <uses-permission android:name="android.permission.BYDAutoInstrumentDevice" />
+    <uses-permission android:name="com.byd.permission.BYDAUTO_INSTRUMENT_COMMON" />
+    <uses-permission android:name="com.byd.permission.BYDAUTO_INSTRUMENT_SET" />
+    <uses-permission android:name="com.byd.permission.BYDAUTO_INSTRUMENT_GET" />
+    <uses-permission android:name="com.byd.permission.BYDAutoInstrumentDevice" />
+    <uses-permission android:name="android.permission.BYDAUTO_TEST_SET" />
+    <uses-permission android:name="android.permission.BYDAUTO_SETTING_COMMON" />
+    <uses-permission android:name="android.permission.BYDAUTO_SETTING_SET" />
+    <uses-permission android:name="android.permission.BYDAUTO_SETTING_GET" />
+    <uses-permission android:name="android.permission.BYDAUTO_BODYWORK_COMMON" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
+    <queries>
+        <package android:name="ru.yandex.yandexnavi" />
+        <package android:name="com.byd.amapservice" />
+        <package android:name="com.byd.launchermap" />
+        <package android:name="com.van.diplus" />
+        <intent>
+            <action android:name="action.com.byd.protocol.ProtocolService" />
+        </intent>
+    </queries>
+    <application
+        android:name=".HudApp"
+        android:allowBackup="false"
+        android:label="YandexHudBridge"
+        android:icon="@android:drawable/sym_def_app_icon"
+        android:theme="@style/Theme.AppCompat.DayNight">
+        <activity android:name=".HudV18Activity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".HudV17Activity" android:exported="true" />
+        <activity android:name=".HudV16Activity" android:exported="true" />
+        <activity android:name=".HudV15Activity" android:exported="true" />
+        <activity android:name=".ProbeActivity" android:exported="true" />
+        <activity android:name=".MainActivity" android:exported="true" />
+        <service
+            android:name=".HudNavListenerService"
+            android:exported="true"
+            android:label="Yandex HUD Nav Listener"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".HudAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+    </application>
+</manifest>

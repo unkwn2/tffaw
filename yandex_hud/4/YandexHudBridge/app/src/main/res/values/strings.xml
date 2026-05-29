@@ -1,0 +1,4 @@
+<resources>
+    <string name="accessibility_label">YandexHudBridge</string>
+    <string name="accessibility_description">Reads Yandex Navigator and sends state to BYD HUD.</string>
+</resources>

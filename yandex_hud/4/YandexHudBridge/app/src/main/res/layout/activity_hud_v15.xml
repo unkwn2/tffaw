@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="4dp"
+    android:background="#000">
+    <TextView android:id="@+id/hudStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:padding="4dp"
+        android:background="#222"
+        android:textColor="#0f0"
+        android:fontFamily="monospace"
+        android:text="HUD v15 — Presentation + Logcat" />
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <TextView android:id="@+id/hudLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:padding="4dp"
+            android:textColor="#ccc"
+            android:background="#111" />
+    </ScrollView>
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="400dp">
+        <LinearLayout android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView android:text="=== PRESENTATION (NO BYD PERMS NEEDED) ==="
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="11sp" android:textColor="#0f0" />
+            <Button android:id="@+id/btnListDisplays" android:text="1) LIST DISPLAYS"
+                android:layout_width="match_parent" android:layout_height="40dp"
+                android:textSize="12sp" android:backgroundTint="#0a0" android:textColor="#fff"/>
+            <Button android:id="@+id/btnPres3" android:text="2) PRESENTATION on displayId=3 (1920x720 cluster)"
+                android:layout_width="match_parent" android:layout_height="40dp"
+                android:textSize="12sp" android:backgroundTint="#0a0" android:textColor="#fff"/>
+            <Button android:id="@+id/btnPres4" android:text="3) PRESENTATION on displayId=4 (1920x480 HUD strip)"
+                android:layout_width="match_parent" android:layout_height="40dp"
+                android:textSize="12sp" android:backgroundTint="#0a0" android:textColor="#fff"/>
+            <Button android:id="@+id/btnPresDismiss" android:text="4) DISMISS all Presentations"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="11sp" android:backgroundTint="#660" android:textColor="#fff"/>
+
+            <TextView android:text="=== LOGCAT CAPTURE (toggle HUD settings!) ==="
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="11sp" android:textColor="#f80" />
+            <Button android:id="@+id/btnClearLogcat" android:text="5) CLEAR LOGCAT (do this BEFORE toggling)"
+                android:layout_width="match_parent" android:layout_height="40dp"
+                android:textSize="12sp" android:backgroundTint="#a60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnCaptureLogcat" android:text="6) CAPTURE LOGCAT (do this AFTER toggling)"
+                android:layout_width="match_parent" android:layout_height="40dp"
+                android:textSize="12sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+
+            <TextView android:text="=== BINDER PROBES ==="
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="11sp" android:textColor="#0ff" />
+            <Button android:id="@+id/btnProbeGB" android:text="7) PROBE BYDAutoGBDevice"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="11sp" android:backgroundTint="#088" android:textColor="#fff"/>
+            <Button android:id="@+id/btnServiceCall" android:text="8) service call autoservice 1..20"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="11sp" android:backgroundTint="#088" android:textColor="#fff"/>
+
+            <TextView android:text="=== EXPORT ==="
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="11sp" android:textColor="#ff0" />
+            <Button android:id="@+id/btnExportUsb" android:text="9) EXPORT LOG TO USB+SDCARD+APPDATA"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="11sp" android:backgroundTint="#880" android:textColor="#fff"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

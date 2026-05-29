@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="4dp">
+    <TextView android:id="@+id/status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:padding="4dp"
+        android:background="#222"
+        android:textColor="#0f0"
+        android:fontFamily="monospace"
+        android:text="boot v10..." />
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1a3a1a">
+        <LinearLayout android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+            <Button android:id="@+id/btnAutoProxy" android:text="AUTO START PROXY"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#0a0"/>
+            <Button android:id="@+id/btnCheckAdb" android:text="CHECK ADB"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#0a0"/>
+            <Button android:id="@+id/btnProxyPing" android:text="PROXY PING"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2a6"/>
+            <Button android:id="@+id/btnProxyScrap" android:text="SCRAP"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2a6"/>
+            <Button android:id="@+id/btnProxyGet" android:text="GET FIDs"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2a6"/>
+            <Button android:id="@+id/btnProxyProbe" android:text="PROBE CLASSES"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2a6"/>
+            <Button android:id="@+id/btnCheckHandshake" android:text="HANDSHAKE?"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2a6"/>
+            <Button android:id="@+id/btnAdbCmd" android:text="ADB CMD"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#26a"/>
+            <Button android:id="@+id/btnExportLog" android:text="EXPORT"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp"/>
+            <Button android:id="@+id/btnClearLog" android:text="CLEAR"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#3a1a1a">
+        <LinearLayout android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+            <Button android:id="@+id/btnCanNaviOn" android:text="CAN NAVI ON"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c42"/>
+            <Button android:id="@+id/btnCanNaviOff" android:text="CAN NAVI OFF"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c42"/>
+            <Button android:id="@+id/btnCanTurnStraight" android:text="CAN \u2191"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c42"/>
+            <Button android:id="@+id/btnCanTurnRight" android:text="CAN \u2192"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c42"/>
+            <Button android:id="@+id/btnCanTurnLeft" android:text="CAN \u2190"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c42"/>
+            <Button android:id="@+id/btnCanTurnUturn" android:text="CAN UTURN"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c42"/>
+            <Button android:id="@+id/btnCanTurnRing" android:text="CAN RING"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c42"/>
+            <Button android:id="@+id/btnCanSweep" android:text="CAN SWEEP 1-12"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c42"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#3a3a1a">
+        <LinearLayout android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+            <Button android:id="@+id/btnProxySet" android:text="SET 0x4c10a018=3"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a62"/>
+            <Button android:id="@+id/btnProxySetArhud" android:text="SET ARHUD IMG"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a62"/>
+            <Button android:id="@+id/btnProxySetColor" android:text="SET ARHUD CLR"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a62"/>
+            <Button android:id="@+id/btnProxySetMeter" android:text="SET METER"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a62"/>
+            <Button android:id="@+id/btnProxyGuide" android:text="GUIDE \u2190"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a62"/>
+            <Button android:id="@+id/btnProxyGuideRight" android:text="GUIDE \u2192"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a62"/>
+            <Button android:id="@+id/btnProxyNavi" android:text="NAVI ON"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a62"/>
+            <Button android:id="@+id/btnProxyNaviOff" android:text="NAVI OFF"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a62"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1a3a3a">
+        <LinearLayout android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+            <Button android:id="@+id/btnSendInfo86" android:text="SEND_INFO HUD1(86)"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2aa"/>
+            <Button android:id="@+id/btnSendInfo87" android:text="SEND_INFO HUD2(87)"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2aa"/>
+            <Button android:id="@+id/btnSendInfo39" android:text="SEND_INFO NAVI(39)"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2aa"/>
+            <Button android:id="@+id/btnSendInfo0" android:text="SEND_INFO RESTORE(0)"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2aa"/>
+            <Button android:id="@+id/btnSendInfo1" android:text="SEND_INFO DISC(1)"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2aa"/>
+            <Button android:id="@+id/btnSendInfoSweep" android:text="SEND_INFO SWEEP 0-50"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#2aa"/>
+            <Button android:id="@+id/btnCanRaw" android:text="CAN RAW WRITE"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#a2a"/>
+            <Button android:id="@+id/btnNativeInfo86" android:text="NATIVE HUD1(86)"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c2a"/>
+            <Button android:id="@+id/btnNativeInfo87" android:text="NATIVE HUD2(87)"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c2a"/>
+            <Button android:id="@+id/btnNativeInfo39" android:text="NATIVE NAVI(39)"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c2a"/>
+            <Button android:id="@+id/btnNativeSweep" android:text="NATIVE SWEEP 0-100"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:textSize="11sp" android:background="#c2a"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <TextView android:id="@+id/log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:padding="4dp"
+            android:textColor="#ddd"
+            android:background="#111"/>
+    </ScrollView>
+</LinearLayout>

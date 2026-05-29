@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="4dp"
+    android:background="#000">
+    <TextView android:id="@+id/probeStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:padding="4dp"
+        android:background="#222"
+        android:textColor="#0f0"
+        android:fontFamily="monospace"
+        android:text="HudProbe v14 — HUD path discovery" />
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <TextView android:id="@+id/probeLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:padding="4dp"
+            android:textColor="#ccc"
+            android:background="#111" />
+    </ScrollView>
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="350dp">
+        <LinearLayout android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <TextView android:text="--- CRITICAL: Display + Features + Props ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#f0f" />
+            <Button android:id="@+id/btnEnumDisplays" android:text="13) ENUM ALL DISPLAYS (DisplayManager)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#90c" android:textColor="#fff"/>
+            <Button android:id="@+id/btnGetProps" android:text="14) HUD SYSTEM PROPERTIES"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#90c" android:textColor="#fff"/>
+            <Button android:id="@+id/btnProbeInstr" android:text="15) PROBE InstrumentDevice + getFeatureList"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#90c" android:textColor="#fff"/>
+            <Button android:id="@+id/btnProbeAllDevices" android:text="16) PROBE ALL BYD AUTO DEVICES"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#90c" android:textColor="#fff"/>
+            <TextView android:text="--- ProtocolService direct ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#ff0" />
+            <Button android:id="@+id/btnProtoBind" android:text="17) BIND ProtocolService"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#880" android:textColor="#fff"/>
+            <Button android:id="@+id/btnProtoSendGuide" android:text="18) PROTO sendSimpleGuidanceInfo(3,200)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#880" android:textColor="#fff"/>
+            <Button android:id="@+id/btnProtoSendNavi" android:text="19) PROTO sendAutoNaviStatus(2)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#880" android:textColor="#fff"/>
+            <Button android:id="@+id/btnProtoSetModel" android:text="20) PROTO setProtocolModelData pid=30000 op=3"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#880" android:textColor="#fff"/>
+            <TextView android:text="--- Path A: getSystemService ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#0f0" />
+            <Button android:id="@+id/btnProbeContainer" android:text="1) PROBE getSystemService(auto_container)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#0a0" android:textColor="#fff"/>
+            <Button android:id="@+id/btnProbeAllSvc" android:text="2) LIST ALL BYD SERVICES"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#0a0" android:textColor="#fff"/>
+            <Button android:id="@+id/btnReadCfg" android:text="3) READ container_comm_cfg.json"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#0a6" android:textColor="#fff"/>
+            <TextView android:text="--- sendInfo + Instrument ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#aa0" />
+            <Button android:id="@+id/btnDirect39" android:text="4) DIRECT sendInfo(1000,39)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnProbeTest" android:text="12) PROBE BYDAutoTestDevice"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#26a" android:textColor="#fff"/>
+            <Button android:id="@+id/btnBroadcastCan" android:text="8) BROADCAST CAN"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#06a" android:textColor="#fff"/>
+            <TextView android:text="--- UNTRIED InstrumentDevice methods ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#f80" />
+            <Button android:id="@+id/btnCameraGuide" android:text="21) sendCameraGuidanceInfo(0,200,1)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnSafeGuide" android:text="22) sendSafeGuidanceInfo(0,200,1)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnThreeLineLyrics" android:text="23) sendThreeLineLyrics(a,b,c)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnSendAddr" android:text="24) sendAddressInfo(0,'addr')"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnNextPath" android:text="25) sendNextPathName('road')"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnDestSet" android:text="26) sendDestinationSetStatus(1)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnRestRoute" android:text="27) sendRestRouteInfo(50,10,9999)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnViewSet" android:text="28) setViewSwitch / setDrivingInfoSwitch"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <Button android:id="@+id/btnClearInfo" android:text="29) clearInfo(0..5)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#c60" android:textColor="#fff"/>
+            <TextView android:text="--- CRITICAL: HUD MENU (feat 86/87) via AutoContainerManager ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#f00" />
+            <Button android:id="@+id/btnHudMenu1" android:text="30) sendInfo(1000,86,'') HUD L1 MENU"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnHudMenu2" android:text="31) sendInfo(1000,87,'') HUD L2 MENU"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnSmartNavGreen" android:text="32) sendInfo(1000,56,'') SmartNav GREEN"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnSmartNavWhite" android:text="33) sendInfo(1000,57,'') SmartNav WHITE"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnSmartNavOff" android:text="34) sendInfo(1000,58,'') SmartNav OFF"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnHudSweep" android:text="35) sendInfo(1000,0..50) SWEEP ALL"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <TextView android:text="--- CVE + SDK checks (from other AI) ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#0ff" />
+            <Button android:id="@+id/btnCveCanCollect" android:text="36) CVE-2025-28169: CanDataCollect probe"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#088" android:textColor="#fff"/>
+            <Button android:id="@+id/btnCveLogcat" android:text="37) CVE-2024-54728: /sdcard/logs probe"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#088" android:textColor="#fff"/>
+            <Button android:id="@+id/btnSdkDevices" android:text="38) BYD SDK devices (Speed/Location/Energy)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#088" android:textColor="#fff"/>
+            <TextView android:text="--- CRITICAL: setInstrumentFeatureValue (feat 86/87 direct) ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#f44" />
+            <Button android:id="@+id/btnSetFeat86" android:text="39) setInstrumentFeatureValue(86,1) HUD L1"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnSetFeat87" android:text="40) setInstrumentFeatureValue(87,1) HUD L2"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnGetFeat86" android:text="41) getInstrumentFeatureValue(86..90) READ"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnSetFeatSweep" android:text="42) setInstrumentFeatureValue(0..90,1) SWEEP"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <Button android:id="@+id/btnMoveTask" android:text="43) moveTaskToDisplay(taskId,displayId)"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#a00" android:textColor="#fff"/>
+            <TextView android:text="--- AUTO RUN ALL + EXPORT ---"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#ff0" />
+            <Button android:id="@+id/btnAutoRun" android:text="AUTO RUN ALL PROBES"
+                android:layout_width="match_parent" android:layout_height="40dp"
+                android:textSize="12sp" android:backgroundTint="#f80" android:textColor="#000"/>
+            <Button android:id="@+id/btnExportUsb" android:text="COPY LOG TO USB"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp" android:backgroundTint="#880" android:textColor="#fff"/>
+            <Button android:id="@+id/btnClearProbe" android:text="CLEAR"
+                android:layout_width="match_parent" android:layout_height="36dp"
+                android:textSize="10sp"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
