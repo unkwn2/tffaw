@@ -1095,80 +1095,84 @@ class HudV18Activity : AppCompatActivity() {
     // === Proxy binder ===
 
     private fun startProxy() {
-        log("Starting openbyd_proxy (uid 2000)...")
+        log("Starting yandexhud_proxy via libadb-android...")
         Thread {
-            val (e1, _) = runCmd("pkill", "-9", "-f", "openbyd_proxy")
-            log("  kill existing: exit=$e1")
-            try { Thread.sleep(500) } catch (_: InterruptedException) {}
+            val result = AdbLocalClient.startProxy(this@HudV18Activity)
+            log("  AdbLocal: $result")
 
-            val cmd = "nohup app_process " +
-                "-Djava.class.path=/system/framework/services.jar:/system/framework/dilink-services.jar:/data/app/~~*/com.sr.openbyd-*/base.apk " +
-                "-Djava.library.path=/system/lib64:/product/lib64 " +
-                "/system/bin " +
-                "--nice-name=openbyd_proxy " +
-                "com.sr.openbyd.proxy.EntryPoint " +
-                "--uid=2000 " +
-                "> /dev/null 2>&1 &"
-
-            val (e2, _) = runCmd("sh", "-c", cmd)
-            log("  start proxy: exit=$e2")
             try { Thread.sleep(3000) } catch (_: InterruptedException) {}
 
-            val (e3, o3) = runCmd("pidof", "openbyd_proxy")
+            val (e3, o3) = runCmd("pidof", "yandexhud_proxy")
             log("  pidof: exit=$e3 pid='$o3'")
 
-            if (e3 != 0 || o3.isBlank()) {
-                log("  Proxy process died! Capturing logcat...")
-                try {
-                    val (_, lc) = runCmd("logcat", "-d", "-s", "HudProxy:I", "ShellProxy:*", "AndroidRuntime:E", "System.err:W")
-                    val lines = lc.lines().filter { it.contains("HudProxy") || it.contains("ShellProxy") || it.contains("FATAL") || it.contains("AndroidRuntime") || it.contains("ProxyManager") }
-                    if (lines.isNotEmpty()) {
-                        log("  logcat (last 30 lines):")
-                        lines.takeLast(30).forEach { log("    $it") }
-                    } else {
-                        log("  logcat EMPTY for HudProxy/ShellProxy tags")
-                        val (_, lc2) = runCmd("logcat", "-d", "-t", "50")
-                        val crash = lc2.lines().filter { l -> l.contains("crash") || l.contains("FATAL") || l.contains("Exception") || l.contains("openbyd") }
-                        if (crash.isNotEmpty()) {
-                            log("  crash hints:")
-                            crash.takeLast(15).forEach { log("    $it") }
-                        }
-                    }
-                } catch (t: Throwable) {
-                    log("  logcat capture err: ${t.message}")
+            if (ShellProxyBridge.isConnected()) {
+                log("  ShellProxyBridge CONNECTED — binder alive")
+            } else if (e3 == 0 && o3.isNotBlank()) {
+                log("  Proxy PID=$o3 alive but binder NOT received — waiting 3s more...")
+                try { Thread.sleep(3000) } catch (_: InterruptedException) {}
+                if (ShellProxyBridge.isConnected()) {
+                    log("  ShellProxyBridge CONNECTED (delayed)")
+                } else {
+                    log("  Proxy alive but no binder after 6s — check handshake file")
+                    proxyDiag()
                 }
-            }
-
-            if (proxyBinder == null) {
-                log("  Binder NOT yet received — trying BYDOpen reflection...")
+            } else {
+                log("  Proxy process died — checking logs...")
+                proxyDiag()
+                log("  Falling back: OpenBYD ICarControl binder...")
                 tryAcquireFromBydOpen()
-            }
-
-            if (proxyBinder == null) {
-                log("  Still no binder — requesting re-broadcast...")
-                try {
-                    val ri = Intent("com.sr.openbyd.PROXY_REQUEST_CONNECT")
-                    ri.setPackage("com.sr.openbyd")
-                    sendBroadcast(ri)
-                    log("  PROXY_REQUEST_CONNECT sent")
-                    try { Thread.sleep(2000) } catch (_: InterruptedException) {}
-                } catch (t: Throwable) {
-                    log("  request broadcast err: ${t.message}")
+                if (proxyBinder == null) {
+                    try {
+                        val ri = Intent("com.sr.openbyd.PROXY_REQUEST_CONNECT")
+                        ri.setPackage("com.sr.openbyd")
+                        sendBroadcast(ri)
+                        log("  PROXY_REQUEST_CONNECT sent")
+                        try { Thread.sleep(2000) } catch (_: InterruptedException) {}
+                    } catch (t: Throwable) {
+                        log("  request broadcast err: ${t.message}")
+                    }
                 }
             }
 
             if (proxyBinder != null) {
-                log("  BINDER ACQUIRED — ready for ICarControl calls")
-                try {
-                    log("  descriptor = ${proxyBinder!!.interfaceDescriptor}")
-                    log("  isBinderAlive = ${proxyBinder!!.isBinderAlive}")
-                } catch (t: Throwable) {
-                    log("  binder probe err: ${t.message}")
-                }
-            } else {
-                log("  NO BINDER — all methods failed. Try manual proxy start from BYDOpen app.")
+                log("  ICarControl BINDER ACQUIRED — ready")
+                try { log("  desc=${proxyBinder!!.interfaceDescriptor} alive=${proxyBinder!!.isBinderAlive}") } catch (_: Throwable) {}
+            }
+            if (ShellProxyBridge.isConnected()) {
+                log("  ShellProxyBridge — ready")
+            }
+            if (proxyBinder == null && !ShellProxyBridge.isConnected()) {
+                log("  NO BINDER (ICarControl or ShellProxy) — all methods failed")
             }
         }.start()
+    }
+
+    private fun proxyDiag() {
+        try {
+            val (_, lc) = runCmd("logcat", "-d", "-s", "HudProxy:I", "AndroidRuntime:E", "System.err:W")
+            val lines = lc.lines().filter { it.contains("HudProxy") || it.contains("FATAL") || it.contains("AndroidRuntime") || it.contains("EntryPoint") || it.contains("yandexhud") }
+            if (lines.isNotEmpty()) {
+                log("  logcat (last 20 lines):")
+                lines.takeLast(20).forEach { log("    $it") }
+            } else {
+                log("  logcat EMPTY — no crash traces")
+            }
+        } catch (t: Throwable) {
+            log("  logcat capture err: ${t.message}")
+        }
+        try {
+            val hs = java.io.File("/storage/emulated/0/Android/data/com.unkwn2.yandexhud/files/hud_proxy.log")
+            if (hs.exists()) {
+                log("  hud_proxy.log (last 15 lines):")
+                hs.readLines().takeLast(15).forEach { log("    $it") }
+            }
+            val hf = java.io.File("/storage/emulated/0/Android/data/com.unkwn2.yandexhud/files/proxy_handshake.txt")
+            if (hf.exists()) {
+                log("  handshake: ${hf.readText().trim().replace("\n", " | ")}")
+            }
+        } catch (t: Throwable) {
+            log("  proxy diag file read err: ${t.message}")
+        }
     }
 
     private fun tryAcquireFromBydOpen() {
@@ -1481,34 +1485,38 @@ class HudV18Activity : AppCompatActivity() {
     private fun checkProxy() {
         log("Checking proxy status...")
         Thread {
-            val (e, o) = runCmd("pidof", "openbyd_proxy")
-            log("  pidof: exit=$e '$o'")
+            val (e, o) = runCmd("pidof", "yandexhud_proxy")
+            log("  yandexhud_proxy pidof: exit=$e pid='$o'")
+            val (e2, o2) = runCmd("pidof", "openbyd_proxy")
+            if (e2 == 0 && o2.isNotBlank()) log("  openbyd_proxy pidof: exit=$e2 pid='$o2'")
             try {
                 val pi = packageManager.getPackageInfo("com.sr.openbyd", 0)
                 log("  BYDOpen pkg: uid=${pi.applicationInfo?.uid}")
             } catch (t: Throwable) {
-                log("  BYDOpen NOT found: ${t.message}")
+                log("  BYDOpen NOT found")
             }
             log("  ICarControl binder = ${if (proxyBinder != null) "ACQUIRED" else "NULL"}")
             if (proxyBinder != null) {
-                try {
-                    log("  desc=${proxyBinder!!.interfaceDescriptor} alive=${proxyBinder!!.isBinderAlive}")
-                } catch (t: Throwable) {
-                    log("  binder probe err: ${t.message}")
-                }
+                try { log("  desc=${proxyBinder!!.interfaceDescriptor} alive=${proxyBinder!!.isBinderAlive}") } catch (_: Throwable) {}
             }
             log("  ShellProxyBridge connected=${ShellProxyBridge.isConnected()}")
             try {
                 val hs = java.io.File("/storage/emulated/0/Android/data/com.unkwn2.yandexhud/files/proxy_handshake.txt")
                 if (hs.exists()) {
-                    val content = hs.readText().take(300)
-                    log("  handshake file: ${content.replace("\n", " | ")}")
+                    log("  handshake: ${hs.readText().trim().replace("\n", " | ")}")
                 } else {
                     log("  NO handshake file")
                 }
             } catch (t: Throwable) {
                 log("  handshake read err: ${t.message}")
             }
+            try {
+                val plog = java.io.File("/storage/emulated/0/Android/data/com.unkwn2.yandexhud/files/hud_proxy.log")
+                if (plog.exists()) {
+                    log("  hud_proxy.log (last 8):")
+                    plog.readLines().takeLast(8).forEach { log("    $it") }
+                }
+            } catch (_: Throwable) {}
         }.start()
     }
 }
