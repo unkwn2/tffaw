@@ -1210,10 +1210,17 @@ class HudV18Activity : AppCompatActivity() {
         try {
             val cls = Class.forName("android.hardware.bydauto.BYDAutoFeatureIds")
             val allFields = cls.declaredFields.filter { 
-                it.name.startsWith("INSTRUMENT_") || it.name.startsWith("SET_NAVI") || it.name.startsWith("NAVIGATION_") || it.name.startsWith("SETTING_")
+                it.name.startsWith("INSTRUMENT_") || it.name.startsWith("SET_NAVI")
+                || it.name.startsWith("NAVIGATION_") || it.name.startsWith("SETTING_")
+                || it.name.startsWith("ATOM_") || it.name.startsWith("EASY_")
+                || it.name.startsWith("CENTER_") || it.name.startsWith("HUD_")
+                || it.name.startsWith("ARHUD_") || it.name.startsWith("DRIVING_")
+                || it.name.startsWith("DISPLAY_") || it.name.startsWith("SPEED_")
+                || it.name.startsWith("PRODUCT_") || it.name.startsWith("VEHICLE_")
+                || it.name.startsWith("DIST_") || it.name.startsWith("DD_")
             }.sortedBy { it.name }
             if (allFields.isNotEmpty()) {
-                log("  --- ALL INSTRUMENT/NAVI/SETTING fields (non-zero only) ---")
+                log("  --- ALL INSTRUMENT/NAVI/SETTING/ATOM/HUD fields (non-zero only) ---")
                 for (f in allFields) {
                     f.isAccessible = true
                     try {
@@ -1224,19 +1231,24 @@ class HudV18Activity : AppCompatActivity() {
             }
         } catch (_: Throwable) {}
 
-        try {
-            val icls = Class.forName("android.hardware.bydauto.BYDAutoFeatureIds\$Instrument")
-            val instFields = icls.declaredFields.sortedBy { it.name }
-            log("  --- Instrument subclass fields (non-zero only) ---")
-            for (f in instFields) {
-                f.isAccessible = true
-                try {
-                    val v = f.getInt(null)
-                    if (v != 0) log("  Instrument.${f.name} = 0x${Integer.toHexString(v)} ($v)")
-                } catch (_: Throwable) {}
-            }
-        } catch (t: Throwable) {
-            log("  Instrument subclass ERR: ${t.message?.take(60)}")
+        for (subName in listOf("Instrument", "Setting", "Test", "Common", "Product",
+                               "Vehicle", "Atom", "Easy", "Center", "Driving", "Hud")) {
+            try {
+                val sub = Class.forName("android.hardware.bydauto.BYDAutoFeatureIds\$$subName")
+                val subFields = sub.declaredFields.sortedBy { it.name }
+                var printed = 0
+                for (f in subFields) {
+                    f.isAccessible = true
+                    try {
+                        val v = f.getInt(null)
+                        if (v != 0) {
+                            log("  $subName.${f.name} = 0x${Integer.toHexString(v)} ($v)")
+                            printed++
+                        }
+                    } catch (_: Throwable) {}
+                }
+                if (printed > 0) log("  ($subName: $printed non-zero fields)")
+            } catch (_: Throwable) {}
         }
 
         log("=== FID DUMP DONE ===")
