@@ -657,16 +657,16 @@ class HudV18Activity : AppCompatActivity() {
     // === TestDevice PRIMARY path (only device that works for uid 10168) ===
 
     private fun tstActivate() {
-        log("=== TST: Activate navi via TestDevice ===")
-        canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 3)
+        log("=== TST: Activate navi via TestDevice (Layout=2 UI7 fullscreen) ===")
+        canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 2)
         canSet(FIDs.INSTRUMENT_SEND_NAVI_STATUS_SET, 2)
     }
 
     private fun tstFullSequence() {
         log("=== TST: FULL AmapService SEQUENCE via TestDevice ===")
         Thread {
-            log("[TST 1/8] Activate: Layout=3 + navi=2")
-            canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 3)
+            log("[TST 1/8] Activate: Layout=2 (UI7 fullscreen) + navi=2")
+            canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 2)
             canSet(FIDs.INSTRUMENT_SEND_NAVI_STATUS_SET, 2)
             try { Thread.sleep(200) } catch (_: InterruptedException) {}
 
@@ -718,8 +718,8 @@ class HudV18Activity : AppCompatActivity() {
     }
 
     private fun tstScreenNavi() {
-        log("TST: HUD screen = 3 (navi) via TestDevice")
-        canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 3)
+        log("TST: HUD screen = 2 (fullscreen nav, UI7) via TestDevice")
+        canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 2)
     }
 
     private fun tstScreenOff() {
@@ -915,15 +915,15 @@ class HudV18Activity : AppCompatActivity() {
     }
 
     private fun canActivate() {
-        log("CAN: Activate")
-        canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 3)
+        log("CAN: Activate (Layout=2)")
+        canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 2)
         canSet(FIDs.INSTRUMENT_SEND_NAVI_STATUS_SET, 2)
     }
 
     private fun canFullSequence() {
         log("=== CAN FULL SEQ ===")
         Thread {
-            canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 3)
+            canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 2)
             canSet(FIDs.INSTRUMENT_SEND_NAVI_STATUS_SET, 2)
             try { Thread.sleep(500) } catch (_: InterruptedException) {}
             canSet(FIDs.INSTRUMENT_GUIDE_INFO_SIMPLE_SET, 3)

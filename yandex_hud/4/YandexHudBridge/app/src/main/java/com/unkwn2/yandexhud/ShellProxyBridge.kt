@@ -284,4 +284,57 @@ object ShellProxyBridge {
             data.recycle()
         }
     }
+
+    fun setSettingFeature(featureId: Int, value: Int): String {
+        val binder = proxyBinder
+        if (binder == null || !binder.isBinderAlive) return "proxy not connected"
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(AIDL_DESC)
+            data.writeInt(featureId)
+            data.writeInt(value)
+            val ok = binder.transact(12, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                val result = reply.readString() ?: "<null>"
+                FileLogger.write(TAG, "setSettingFeature(0x${Integer.toHexString(featureId)}, $value) = $result")
+                return result
+            }
+            return "transact failed"
+        } catch (t: Throwable) {
+            val msg = "setSettingFeature ERR ${t.javaClass.simpleName}: ${t.message}"
+            FileLogger.write(TAG, msg)
+            return msg
+        } finally {
+            reply.recycle()
+            data.recycle()
+        }
+    }
+
+    fun runShell(command: String): String {
+        val binder = proxyBinder
+        if (binder == null || !binder.isBinderAlive) return "proxy not connected"
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(AIDL_DESC)
+            data.writeString(command)
+            val ok = binder.transact(11, data, reply, 0)
+            if (ok) {
+                reply.readException()
+                val result = reply.readString() ?: "<null>"
+                FileLogger.write(TAG, "runShell(\"$command\") = ${result.take(120)}")
+                return result
+            }
+            return "transact failed"
+        } catch (t: Throwable) {
+            val msg = "runShell ERR ${t.javaClass.simpleName}: ${t.message}"
+            FileLogger.write(TAG, msg)
+            return msg
+        } finally {
+            reply.recycle()
+            data.recycle()
+        }
+    }
 }

@@ -4,12 +4,17 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import io.github.muntashirakon.adb.AbsAdbConnectionManager
+import java.io.File
+import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.SecureRandom
 import java.security.cert.Certificate
+import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
+import java.security.spec.PKCS8EncodedKeySpec
+import java.util.Base64
 
 class AdbManager private constructor() : AbsAdbConnectionManager() {
     private var mPrivateKey: PrivateKey? = null
@@ -28,15 +33,52 @@ class AdbManager private constructor() : AbsAdbConnectionManager() {
 
     init {
         setApi(Build.VERSION.SDK_INT)
-        try {
-            val kpg = KeyPairGenerator.getInstance("RSA")
-            kpg.initialize(2048, SecureRandom.getInstance("SHA1PRNG"))
-            val keyPair = kpg.generateKeyPair()
-            mPrivateKey = keyPair.private
-            mCertificate = generateCert(keyPair)
-            FileLogger.write("AdbMgr", "key pair generated OK")
+        val loaded = tryLoadPersistedKeys()
+        if (!loaded) {
+            try {
+                val kpg = KeyPairGenerator.getInstance("RSA")
+                kpg.initialize(2048, SecureRandom.getInstance("SHA1PRNG"))
+                val keyPair = kpg.generateKeyPair()
+                mPrivateKey = keyPair.private
+                mCertificate = generateCert(keyPair)
+                persistKeys(keyPair.private, mCertificate!!)
+                FileLogger.write("AdbMgr", "key pair generated + persisted")
+            } catch (t: Throwable) {
+                FileLogger.write("AdbMgr", "key gen ERR: ${t.message}")
+            }
+        } else {
+            FileLogger.write("AdbMgr", "key pair loaded from persisted storage")
+        }
+    }
+
+    private fun tryLoadPersistedKeys(): Boolean {
+        return try {
+            val dir = File("/data/data/com.unkwn2.yandexhud/files")
+            val privFile = File(dir, "adb_key.priv")
+            val certFile = File(dir, "adb_key.cert")
+            if (!privFile.exists() || !certFile.exists()) return false
+            val privBytes = Base64.getDecoder().decode(privFile.readText().trim())
+            val certBytes = Base64.getDecoder().decode(certFile.readText().trim())
+            val kf = KeyFactory.getInstance("RSA")
+            mPrivateKey = kf.generatePrivate(PKCS8EncodedKeySpec(privBytes))
+            mCertificate = CertificateFactory.getInstance("X.509")
+                .generateCertificate(certBytes.inputStream()) as X509Certificate
+            true
         } catch (t: Throwable) {
-            FileLogger.write("AdbMgr", "key gen ERR : ")
+            FileLogger.write("AdbMgr", "load persisted keys ERR: ${t.message}")
+            false
+        }
+    }
+
+    private fun persistKeys(priv: PrivateKey, cert: Certificate) {
+        try {
+            val dir = File("/data/data/com.unkwn2.yandexhud/files")
+            if (!dir.exists()) dir.mkdirs()
+            File(dir, "adb_key.priv").writeText(Base64.getEncoder().encodeToString(priv.encoded))
+            File(dir, "adb_key.cert").writeText(Base64.getEncoder().encodeToString(cert.encoded))
+            FileLogger.write("AdbMgr", "keys persisted OK")
+        } catch (t: Throwable) {
+            FileLogger.write("AdbMgr", "persist keys ERR: ${t.message}")
         }
     }
 

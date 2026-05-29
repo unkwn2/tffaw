@@ -25,6 +25,8 @@ class ShellProxyService : Binder() {
         private const val TX_PROBE = 7
         private const val TX_SEND_INFO = 8
         private const val TX_TEST_SET = 9
+        private const val TX_RUN_SHELL = 11
+        private const val TX_SET_SETTING_FEATURE = 12
 
         private val INSTR_CLASS_NAMES = arrayOf(
             "android.hardware.bydauto.instrument.BYDAutoInstrumentDevice",
@@ -47,6 +49,16 @@ class ShellProxyService : Binder() {
         private val CONTAINER_CLASS_NAMES = arrayOf(
             "android.os.AutoContainerManager",
             "com.byd.os.AutoContainerManager"
+        )
+        private val SETTING_CLASS_NAMES = arrayOf(
+            "com.byd.protocol.canbus.protocol.setting.SettingDevice",
+            "com.byd.protocol.canbus.protocol.cabin.SettingDevice",
+            "com.byd.kit.canbus.protocol.setting.SettingDevice",
+            "com.byd.dilink.protocol.canbus.protocol.SettingDevice",
+            "android.hardware.bydauto.setting.BYDAutoSettingDevice",
+            "android.hardware.bydauto.BYDAutoSettingDevice",
+            "com.byd.hardware.bydauto.setting.BYDAutoSettingDevice",
+            "com.byd.auto.setting.BYDAutoSettingDevice"
         )
 
         @SuppressLint("PrivateApi")
@@ -135,6 +147,8 @@ class ShellProxyService : Binder() {
 
     private var instrDevice: Any? = null
     private var instrCls: Class<*>? = null
+    private var settingDevice: Any? = null
+    private var settingCls: Class<*>? = null
     private var testDevice: Any? = null
     private var testCls: Class<*>? = null
     private var containerMgr: Any? = null
@@ -221,6 +235,7 @@ class ShellProxyService : Binder() {
         systemCtx = ctx
         val ok = ensureDevice()
         flog("initDevice: ensureDevice=$ok device=${instrDevice != null}")
+        initSettingDevice(ctx)
         initTestDevice(ctx)
         initContainerManager(ctx)
         return ok
@@ -400,6 +415,23 @@ class ShellProxyService : Binder() {
                 reply?.writeString(result)
                 return true
             }
+            TX_SET_SETTING_FEATURE -> {
+                data.enforceInterface(DESC)
+                val featureId = data.readInt()
+                val value = data.readInt()
+                val result = doSetSettingFeature(featureId, value)
+                reply?.writeNoException()
+                reply?.writeString(result)
+                return true
+            }
+            TX_RUN_SHELL -> {
+                data.enforceInterface(DESC)
+                val command = data.readString() ?: ""
+                val result = doRunShell(command)
+                reply?.writeNoException()
+                reply?.writeString(result)
+                return true
+            }
             else -> return super.onTransact(code, data, reply, flags)
         }
     }
@@ -548,6 +580,62 @@ class ShellProxyService : Binder() {
         } catch (t: Throwable) {
             val c = t.cause ?: t
             "sendInfo ERR ${c.javaClass.simpleName}: ${c.message}"
+        }
+    }
+
+    @SuppressLint("PrivateApi")
+    private fun initSettingDevice(ctx: android.content.Context) {
+        for (className in SETTING_CLASS_NAMES) {
+            try {
+                val klass = Class.forName(className)
+                settingCls = klass
+                val getInstance = klass.getMethod("getInstance", android.content.Context::class.java)
+                settingDevice = getInstance.invoke(null, ctx)
+                if (settingDevice != null) {
+                    flog("initSettingDevice OK via $className")
+                    return
+                }
+            } catch (t: Throwable) {
+                flog("initSettingDevice $className ERR ${t.javaClass.simpleName}: ${t.message}")
+            }
+        }
+        flog("initSettingDevice: no setting device available")
+    }
+
+    @SuppressLint("PrivateApi")
+    private fun doSetSettingFeature(featureId: Int, value: Int): String {
+        if (settingDevice == null) return "ERR: settingDevice not init"
+        return try {
+            val absCls = resolveClass(ABS_CLASS_NAMES) ?: return "ERR: AbsBYDAutoDevice not found"
+            val evCls = resolveClass(EVENT_CLASS_NAMES) ?: return "ERR: BYDAutoEventValue not found"
+            val evCtor = evCls.declaredConstructors.firstOrNull {
+                it.parameterTypes.isEmpty()
+            } ?: return "ERR: no BYDAutoEventValue empty ctor"
+            evCtor.isAccessible = true
+            val evInst = evCtor.newInstance()
+            val intField = evCls.getDeclaredField("intValue")
+            intField.isAccessible = true
+            intField.set(evInst, value)
+            val setM = absCls.getDeclaredMethod("set", IntArray::class.java, evCls)
+            val res = setM.invoke(settingDevice, intArrayOf(featureId), evInst)
+            "setSetting(0x${Integer.toHexString(featureId)}, $value) = $res"
+        } catch (t: Throwable) {
+            val c = t.cause ?: t
+            "setSetting ERR ${c.javaClass.simpleName}: ${c.message}"
+        }
+    }
+
+    @SuppressLint("PrivateApi")
+    private fun doRunShell(command: String): String {
+        return try {
+            val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
+            val out = proc.inputStream.bufferedReader().readText().trim()
+            val err = proc.errorStream.bufferedReader().readText().trim()
+            val exit = proc.waitFor()
+            val result = if (out.isNotEmpty()) out else err
+            "shell(exit=$exit): $result"
+        } catch (t: Throwable) {
+            "shell ERR ${t.javaClass.simpleName}: ${t.message}"
         }
     }
 

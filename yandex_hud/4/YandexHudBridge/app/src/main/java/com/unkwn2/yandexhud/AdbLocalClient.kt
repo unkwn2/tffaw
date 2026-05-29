@@ -23,10 +23,10 @@ object AdbLocalClient {
             FileLogger.write("AdbLocal", "proxy cmd: " + command.take(200))
             val stream = manager.openStream("shell:")
             stream.openOutputStream().use { os ->
-                os.write((command + "\n").toByteArray(Charsets.UTF_8))
+                os.write(command.toByteArray(Charsets.UTF_8))
                 os.flush()
-                os.write("\n".toByteArray(Charsets.UTF_8))
             }
+            Thread.sleep(2000)
             FileLogger.write("AdbLocal", "proxy launch script executed via libadb-android")
             "OK: proxy launched via libadb-android"
         } catch (t: Throwable) {
@@ -48,19 +48,18 @@ object AdbLocalClient {
     }
 
     private fun buildProxyCommand(apkPath: String): String {
-        val nl = "\n"
-        return "apkPath=" + apkPath + nl +
-            nl +
-            "pkill -9 -f openbyd_proxy 2>/dev/null" + nl +
-            "pidof openbyd_proxy | xargs kill -9 2>/dev/null" + nl +
-            nl +
-            "nohup app_process " + nl +
-            "  -Djava.class.path=/system/framework/services.jar:/system/framework/dilink-services.jar:" + apkPath + " " + nl +
-            "  -Djava.library.path=/system/lib64:/product/lib64:" + apkPath + "!/lib/arm64-v8a " + nl +
-            "  /system/bin " + nl +
-            "  --nice-name=openbyd_proxy " + nl +
-            "  com.unkwn2.yandexhud.proxy.EntryPoint " + nl +
-            "  > /dev/null 2>&1 &" + nl
+        return "pkill -9 -f yandexhud_proxy\n" +
+            "pidof yandexhud_proxy | xargs kill -9 2>/dev/null\n" +
+            "\n" +
+            "nohup app_process \\\n" +
+            "  -Djava.class.path=/system/framework/services.jar:/system/framework/dilink-services.jar:" + apkPath + " \\\n" +
+            "  -Djava.library.path=/system/lib64:/product/lib64:" + apkPath + "!/lib/arm64-v8a \\\n" +
+            "  /system/bin \\\n" +
+            "  --nice-name=yandexhud_proxy \\\n" +
+            "  com.unkwn2.yandexhud.proxy.EntryPoint \\\n" +
+            "  --uid=2000 \\\n" +
+            "  > /dev/null 2>&1 &\n" +
+            "\n"
     }
 
     fun getManualCommand(context: Context): String {

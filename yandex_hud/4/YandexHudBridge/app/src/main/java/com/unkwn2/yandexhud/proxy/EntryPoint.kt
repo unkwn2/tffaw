@@ -24,22 +24,40 @@ class EntryPoint {
         private const val TX_SEND_INFO = 8
         private const val TX_TEST_SET = 9
         private const val TX_NATIVE_SEND_INFO = 10
+        private const val TX_RUN_SHELL = 11
+        private const val TX_SET_SETTING_FEATURE = 12
 
         private val INSTR_CLASS_NAMES = arrayOf(
             "android.hardware.bydauto.instrument.BYDAutoInstrumentDevice",
-            "android.hardware.bydauto.BYDAutoInstrumentDevice"
+            "android.hardware.bydauto.BYDAutoInstrumentDevice",
+            "com.byd.auto.instrument.BYDAutoInstrumentDevice",
+            "com.byd.auto.sdk.BYDAutoInstrumentDevice"
         )
         private val ABS_CLASS_NAMES = arrayOf(
-            "android.hardware.bydauto.AbsBYDAutoDevice"
+            "android.hardware.bydauto.AbsBYDAutoDevice",
+            "com.byd.auto.AbsBYDAutoDevice"
         )
         private val EVENT_CLASS_NAMES = arrayOf(
-            "android.hardware.bydauto.BYDAutoEventValue"
+            "android.hardware.bydauto.BYDAutoEventValue",
+            "com.byd.auto.BYDAutoEventValue"
         )
         private val TEST_CLASS_NAMES = arrayOf(
-            "android.hardware.bydauto.test.BYDAutoTestDevice"
+            "android.hardware.bydauto.test.BYDAutoTestDevice",
+            "com.byd.auto.test.BYDAutoTestDevice"
         )
         private val CONTAINER_CLASS_NAMES = arrayOf(
-            "android.os.AutoContainerManager"
+            "android.os.AutoContainerManager",
+            "com.byd.os.AutoContainerManager"
+        )
+        private val SETTING_CLASS_NAMES = arrayOf(
+            "com.byd.protocol.canbus.protocol.setting.SettingDevice",
+            "com.byd.protocol.canbus.protocol.cabin.SettingDevice",
+            "com.byd.kit.canbus.protocol.setting.SettingDevice",
+            "com.byd.dilink.protocol.canbus.protocol.SettingDevice",
+            "android.hardware.bydauto.setting.BYDAutoSettingDevice",
+            "android.hardware.bydauto.BYDAutoSettingDevice",
+            "com.byd.hardware.bydauto.setting.BYDAutoSettingDevice",
+            "com.byd.auto.setting.BYDAutoSettingDevice"
         )
 
         @SuppressLint("PrivateApi")
@@ -59,7 +77,15 @@ class EntryPoint {
                 flog("systemCtx OK: ${context.javaClass.name}")
 
                 val service = ProxyBinder(context)
-                flog("ProxyBinder created: instr=${service.instrDeviceInfo} test=${service.testDeviceInfo} container=${service.containerInfo}")
+                flog("ProxyBinder created: instr=${service.instrDeviceInfo} test=${service.testDeviceInfo} sett=${service.settingDeviceInfo} container=${service.containerInfo}")
+
+                // Auto-enable mock_location for our app via shell uid
+                try {
+                    val (ok, out) = runShellCmd("cmd appops set com.unkwn2.yandexhud android:mock_location allow")
+                    flog("appops mock_location: ok=$ok out=$out")
+                } catch (t: Throwable) {
+                    flog("appops mock_location ERR: ${t.message}")
+                }
 
                 val intent = Intent("com.unkwn2.yandexhud.PROXY_CONNECTED").apply {
                     setPackage("com.unkwn2.yandexhud")
@@ -96,6 +122,16 @@ class EntryPoint {
                     cause.stackTrace.take(10).forEach { flog("    at $it") }
                 }
             }
+        }
+
+        private fun runShellCmd(command: String): Pair<Int, String> {
+            return try {
+                val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
+                val out = proc.inputStream.bufferedReader().readText().trim()
+                val err = proc.errorStream.bufferedReader().readText().trim()
+                val exit = proc.waitFor()
+                exit to if (out.isNotEmpty()) out else err
+            } catch (t: Throwable) { -1 to "ERR: ${t.message}" }
         }
 
         private fun writeHandshakeFile() {
@@ -145,6 +181,8 @@ class EntryPoint {
     class ProxyBinder(ctx: android.content.Context) : Binder() {
         private var instrDevice: Any? = null
         private var instrCls: Class<*>? = null
+        private var settingDevice: Any? = null
+        private var settingCls: Class<*>? = null
         private var testDevice: Any? = null
         private var testCls: Class<*>? = null
         private var containerMgr: Any? = null
@@ -156,6 +194,7 @@ class EntryPoint {
 
         val instrDeviceInfo get() = if (instrDevice != null) "OK:${instrCls?.simpleName}" else "NULL"
         val testDeviceInfo get() = if (testDevice != null) "OK:${testCls?.simpleName}" else "NULL"
+        val settingDeviceInfo get() = if (settingDevice != null) "OK:${settingCls?.simpleName}" else "NULL"
         val containerInfo get() = if (containerMgr != null) "OK:${containerMgr?.javaClass?.simpleName}" else "NULL"
 
         init {
@@ -168,6 +207,7 @@ class EntryPoint {
             val sb = StringBuilder("=== CLASS PROBE ===\n")
             val classLists = mapOf(
                 "INSTR" to INSTR_CLASS_NAMES,
+                "SETT" to SETTING_CLASS_NAMES,
                 "ABS" to ABS_CLASS_NAMES,
                 "EVT" to EVENT_CLASS_NAMES,
                 "TEST" to TEST_CLASS_NAMES,
@@ -178,7 +218,6 @@ class EntryPoint {
                     try {
                         val c = Class.forName(name)
                         sb.append("$label FOUND: $name\n")
-                        sb.append("  methods: ${c.methods.map { it.name }.take(25).joinToString(", ")}\n")
                     } catch (e: ClassNotFoundException) {
                         sb.append("$label MISS:  $name\n")
                     } catch (e: Throwable) {
@@ -204,6 +243,21 @@ class EntryPoint {
                     }
                 } catch (t: Throwable) {
                     flog("instrDevice $className ERR ${t.javaClass.simpleName}: ${t.message}")
+                }
+            }
+
+            for (className in SETTING_CLASS_NAMES) {
+                try {
+                    val klass = Class.forName(className)
+                    settingCls = klass
+                    val getInstance = klass.getMethod("getInstance", android.content.Context::class.java)
+                    settingDevice = getInstance.invoke(null, systemCtx)
+                    if (settingDevice != null) {
+                        flog("settingDevice OK via $className")
+                        break
+                    }
+                } catch (t: Throwable) {
+                    flog("settingDevice $className ERR ${t.javaClass.simpleName}: ${t.message}")
                 }
             }
 
@@ -256,7 +310,7 @@ class EntryPoint {
                 }
             }
 
-            flog("initAllDevices done: instr=${instrDevice != null} test=${testDevice != null} container=${containerMgr != null}")
+            flog("initAllDevices done: instr=${instrDevice != null} sett=${settingDevice != null} test=${testDevice != null} container=${containerMgr != null}")
             initNativeContainer()
         }
 
@@ -295,6 +349,7 @@ class EntryPoint {
                     reply?.writeNoException()
                     val extra = buildString {
                         append(" instr=${instrDevice != null}")
+                        append(" sett=${settingDevice != null}")
                         append(" test=${testDevice != null}")
                         append(" container=${containerMgr != null}")
                     }
@@ -312,6 +367,15 @@ class EntryPoint {
                     val featureId = data.readInt()
                     val value = data.readInt()
                     val result = doSetFeature(featureId, value)
+                    reply?.writeNoException()
+                    reply?.writeString(result)
+                    return true
+                }
+                TX_SET_SETTING_FEATURE -> {
+                    data.enforceInterface(DESC)
+                    val featureId = data.readInt()
+                    val value = data.readInt()
+                    val result = doSetSettingFeature(featureId, value)
                     reply?.writeNoException()
                     reply?.writeString(result)
                     return true
@@ -377,21 +441,35 @@ class EntryPoint {
                     reply?.writeString(result)
                     return true
                 }
+                TX_RUN_SHELL -> {
+                    data.enforceInterface(DESC)
+                    val command = data.readString() ?: ""
+                    val result = doRunShell(command)
+                    reply?.writeNoException()
+                    reply?.writeString(result)
+                    return true
+                }
                 else -> return super.onTransact(code, data, reply, flags)
             }
         }
 
         @SuppressLint("PrivateApi")
-        private fun doSetFeature(featureId: Int, value: Int): String {
-            val dev = instrDevice ?: return "ERR: instrDevice not init"
+        private fun resolveClass(names: Array<String>): Class<*>? {
+            for (name in names) {
+                try { return Class.forName(name) } catch (_: ClassNotFoundException) {}
+            }
+            return null
+        }
+
+        @SuppressLint("PrivateApi")
+        private fun makeEventValue(value: Int): Any? {
             return try {
-                val absCls = Class.forName(ABS_CLASS_NAMES[0])
-                val evCls = Class.forName(EVENT_CLASS_NAMES[0])
+                val evCls = resolveClass(EVENT_CLASS_NAMES) ?: return null
                 val evCtor = evCls.declaredConstructors.firstOrNull {
                     it.parameterTypes.isEmpty() || (it.parameterTypes.size == 1 && it.parameterTypes[0] == Int::class.java)
-                } ?: return "ERR: no EventValue ctor"
+                } ?: return null
                 evCtor.isAccessible = true
-                val evInst = if (evCtor.parameterTypes.isEmpty()) {
+                if (evCtor.parameterTypes.isEmpty()) {
                     evCtor.newInstance().also {
                         val intField = evCls.getDeclaredField("intValue")
                         intField.isAccessible = true
@@ -400,17 +478,48 @@ class EntryPoint {
                 } else {
                     evCtor.newInstance(value)
                 }
+            } catch (_: Throwable) { null }
+        }
+
+        @SuppressLint("PrivateApi")
+        private fun doSetFeature(featureId: Int, value: Int): String {
+            val dev = instrDevice ?: return "ERR: instrDevice not init"
+            val ev = makeEventValue(value) ?: return "ERR: cannot create EventValue"
+            return try {
+                val absCls = resolveClass(ABS_CLASS_NAMES) ?: return "ERR: AbsBYDAutoDevice not found"
+                val evCls = ev.javaClass
                 val setM = absCls.declaredMethods.firstOrNull {
                     it.name == "set" && it.parameterTypes.size == 2 &&
                         it.parameterTypes[0] == IntArray::class.java &&
                         it.parameterTypes[1] == evCls
                 } ?: return "ERR: no set(int[], EventValue)"
                 setM.isAccessible = true
-                val res = setM.invoke(dev, intArrayOf(featureId), evInst)
-                "setFeature(0x${Integer.toHexString(featureId)}, $value) = $res"
+                val res = setM.invoke(dev, intArrayOf(featureId), ev)
+                "setInstr(0x${Integer.toHexString(featureId)}, $value) = $res"
             } catch (t: Throwable) {
                 val c = t.cause ?: t
-                "setFeature ERR ${c.javaClass.simpleName}: ${c.message}"
+                "setInstr ERR ${c.javaClass.simpleName}: ${c.message}"
+            }
+        }
+
+        @SuppressLint("PrivateApi")
+        private fun doSetSettingFeature(featureId: Int, value: Int): String {
+            val dev = settingDevice ?: return "ERR: settingDevice not init"
+            val ev = makeEventValue(value) ?: return "ERR: cannot create EventValue"
+            return try {
+                val absCls = resolveClass(ABS_CLASS_NAMES) ?: return "ERR: AbsBYDAutoDevice not found"
+                val evCls = ev.javaClass
+                val setM = absCls.declaredMethods.firstOrNull {
+                    it.name == "set" && it.parameterTypes.size == 2 &&
+                        it.parameterTypes[0] == IntArray::class.java &&
+                        it.parameterTypes[1] == evCls
+                } ?: return "ERR: no set(int[], EventValue)"
+                setM.isAccessible = true
+                val res = setM.invoke(dev, intArrayOf(featureId), ev)
+                "setSett(0x${Integer.toHexString(featureId)}, $value) = $res"
+            } catch (t: Throwable) {
+                val c = t.cause ?: t
+                "setSett ERR ${c.javaClass.simpleName}: ${c.message}"
             }
         }
 
@@ -418,7 +527,7 @@ class EntryPoint {
         private fun doGetFeature(featureId: Int): String {
             val dev = instrDevice ?: return "ERR: instrDevice not init"
             return try {
-                val absCls = Class.forName(ABS_CLASS_NAMES[0])
+                val absCls = resolveClass(ABS_CLASS_NAMES) ?: return "ERR: AbsBYDAutoDevice not found"
                 val getM = absCls.declaredMethods.firstOrNull {
                     it.name == "get" && it.parameterTypes.size == 1 && it.parameterTypes[0] == IntArray::class.java
                 } ?: return "ERR: no get(int[])"
@@ -463,6 +572,7 @@ class EntryPoint {
         private fun doScrap(): String {
             val sb = StringBuilder()
             sb.append("instrCls=").append(instrCls?.name).append("\n")
+            sb.append("settCls=").append(settingCls?.name).append("\n")
             sb.append("testCls=").append(testCls?.name).append("\n")
             sb.append("containerCls=").append(containerCls?.name).append("\n")
             sb.append("containerMgr=").append(containerMgr != null).append("\n")
@@ -483,16 +593,6 @@ class EntryPoint {
                 try {
                     val m = instrCls!!.getMethod("getSetPermission")
                     sb.append("setPerm=").append(m.invoke(instrDevice)).append("\n")
-                } catch (_: Throwable) {}
-            }
-            if (testDevice != null && testCls != null) {
-                try {
-                    sb.append("testMethods: ${testCls!!.methods.map { "${it.name}(${it.parameterTypes.map { t -> t.simpleName }})" }.take(15).joinToString(", ")}\n")
-                } catch (_: Throwable) {}
-            }
-            if (containerMgr != null) {
-                try {
-                    sb.append("containerMethods: ${containerMgr!!.javaClass.methods.map { "${it.name}(${it.parameterTypes.map { t -> t.simpleName }})" }.take(15).joinToString(", ")}\n")
                 } catch (_: Throwable) {}
             }
             return sb.toString().trimEnd()
@@ -516,7 +616,7 @@ class EntryPoint {
             val dev = testDevice ?: return "ERR: BYDAutoTestDevice not available"
             val cls = testCls ?: return "ERR: testCls null"
             return try {
-                val evCls = Class.forName(EVENT_CLASS_NAMES[0])
+                val evCls = resolveClass(EVENT_CLASS_NAMES) ?: return "ERR: EventValue not found"
                 val evCtor = evCls.declaredConstructors.firstOrNull { it.parameterTypes.isEmpty() }
                     ?: return "ERR: no EventValue empty ctor"
                 evCtor.isAccessible = true
@@ -544,6 +644,20 @@ class EntryPoint {
             } catch (t: Throwable) {
                 val c = t.cause ?: t
                 "nativeSendInfo ERR ${c.javaClass.simpleName}: ${c.message}"
+            }
+        }
+
+        @SuppressLint("PrivateApi")
+        private fun doRunShell(command: String): String {
+            return try {
+                val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
+                val out = proc.inputStream.bufferedReader().readText().trim()
+                val err = proc.errorStream.bufferedReader().readText().trim()
+                val exit = proc.waitFor()
+                val result = if (out.isNotEmpty()) out else err
+                "shell(exit=$exit): $result"
+            } catch (t: Throwable) {
+                "shell ERR ${t.javaClass.simpleName}: ${t.message}"
             }
         }
     }
