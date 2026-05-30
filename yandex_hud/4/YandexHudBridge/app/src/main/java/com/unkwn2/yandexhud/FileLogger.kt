@@ -49,6 +49,10 @@ object FileLogger {
         try { file?.delete() } catch (_: Throwable) {}
     }
 
+    fun log(tag: String, msg: String) = write(tag, msg)
+
+    fun path(): String = file?.absolutePath ?: "<no log>"
+
     fun readAll(): String {
         val f = file ?: return "<no log file>"
         if (!f.exists()) return "<log empty>"

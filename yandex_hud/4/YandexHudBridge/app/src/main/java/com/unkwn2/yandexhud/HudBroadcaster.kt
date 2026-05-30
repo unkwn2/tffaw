@@ -106,6 +106,112 @@ object HudBroadcaster {
         }
     }
 
+    fun startAmapService(ctx: Context) {
+        runCatching {
+            val p = Runtime.getRuntime().exec(arrayOf("am", "startservice", "-n", "com.byd.amapservice/com.example.amapservice.AmapService"))
+            p.waitFor()
+            FileLogger.write(TAG, "startservice rc=${p.exitValue()}")
+        }.onFailure { FileLogger.write(TAG, "startservice FAIL: $it") }
+    }
+
+    fun sendStateGaodeStart(ctx: Context) {
+        val b = Bundle().apply {
+            putBoolean("IS_BYD_MAP", false)
+            putBoolean("IS_BYD_BAIDU_MAP", false)
+            putInt("KEY_TYPE", KEY_TYPE_STATE)
+            putInt("EXTRA_STATE", EXTRA_STATE_GAODE_START)
+        }
+        send(ctx, b)
+        FileLogger.write(TAG, "STATE GAODE_START")
+    }
+
+    fun sendStateAltStart(ctx: Context) {
+        val b = Bundle().apply {
+            putBoolean("IS_BYD_MAP", false)
+            putBoolean("IS_BYD_BAIDU_MAP", false)
+            putInt("KEY_TYPE", KEY_TYPE_STATE)
+            putInt("EXTRA_STATE", 10)
+        }
+        send(ctx, b)
+        FileLogger.write(TAG, "STATE ALT_START(10)")
+    }
+
+    fun sendStateStop(ctx: Context) {
+        val b = Bundle().apply {
+            putBoolean("IS_BYD_MAP", false)
+            putBoolean("IS_BYD_BAIDU_MAP", false)
+            putInt("KEY_TYPE", KEY_TYPE_STATE)
+            putInt("EXTRA_STATE", EXTRA_STATE_STOP)
+        }
+        send(ctx, b)
+        FileLogger.write(TAG, "STATE STOP")
+    }
+
+    fun sendGuideSimple(ctx: Context, turnIcon: Int, distanceMeters: Int) {
+        val b = Bundle().apply {
+            putBoolean("IS_BYD_MAP", false)
+            putBoolean("IS_BYD_BAIDU_MAP", false)
+            putInt("KEY_TYPE", KEY_TYPE_NAVI_DATA)
+            putInt("TYPE", NAVI_STATE_START)
+            putInt("NEW_ICON", turnIcon)
+            putInt("NEXT_NEXT_TURN_ICON", 0)
+            putInt("NEXT_SEG_REMAIN_DIS", distanceMeters)
+            putInt("SEG_REMAIN_DIS", distanceMeters)
+            putString("NEXT_ROAD_NAME", "Test")
+            putString("NEXT_NEXT_ROAD_NAME", "")
+            putInt("ROUTE_REMAIN_DIS", 10000)
+            putInt("ROUTE_REMAIN_TIME", 30)
+            putString("ETA_TEXT", "预计今天15时00分到达")
+            putString("ROUTE_REMAIN_TIME_AUTO", "30分")
+            putString("ROUTE_REMAIN_DIS_AUTO", "10000米")
+            putString("SEG_REMAIN_DIS_AUTO", "${distanceMeters}米")
+            putInt("ROUNG_ABOUT_NUM", -1)
+            putInt("NEXT_ROUNG_ABOUT_NUM", -1)
+            putInt("TRAFFIC_LIGHT_NUM", 0)
+        }
+        send(ctx, b)
+        FileLogger.write(TAG, "GUIDE_SIMPLE icon=$turnIcon dist=$distanceMeters")
+    }
+
+    fun sendGuideFull(
+        ctx: Context,
+        turnIcon: Int,
+        nextTurnIcon: Int,
+        segRemainDist: Int,
+        nextSegRemainDist: Int,
+        routeRemainDist: Int,
+        routeRemainTimeMin: Int,
+        nextRoadName: String,
+        nextNextRoadName: String,
+        etaHour: Int,
+        etaMinute: Int
+    ) {
+        val etaText = "预计今天${etaHour.toString().padStart(2, '0')}时${etaMinute.toString().padStart(2, '0')}分到达"
+        val b = Bundle().apply {
+            putBoolean("IS_BYD_MAP", false)
+            putBoolean("IS_BYD_BAIDU_MAP", false)
+            putInt("KEY_TYPE", KEY_TYPE_NAVI_DATA)
+            putInt("TYPE", NAVI_STATE_START)
+            putInt("NEW_ICON", turnIcon)
+            putInt("NEXT_NEXT_TURN_ICON", nextTurnIcon)
+            putInt("NEXT_SEG_REMAIN_DIS", segRemainDist)
+            putInt("SEG_REMAIN_DIS", segRemainDist)
+            putString("NEXT_ROAD_NAME", nextRoadName)
+            putString("NEXT_NEXT_ROAD_NAME", nextNextRoadName)
+            putInt("ROUTE_REMAIN_DIS", routeRemainDist)
+            putInt("ROUTE_REMAIN_TIME", routeRemainTimeMin)
+            putString("ETA_TEXT", etaText)
+            putString("ROUTE_REMAIN_TIME_AUTO", formatRemainTime(routeRemainTimeMin))
+            putString("ROUTE_REMAIN_DIS_AUTO", "${routeRemainDist}米")
+            putString("SEG_REMAIN_DIS_AUTO", "${segRemainDist}米")
+            putInt("ROUNG_ABOUT_NUM", -1)
+            putInt("NEXT_ROUNG_ABOUT_NUM", -1)
+            putInt("TRAFFIC_LIGHT_NUM", 0)
+        }
+        send(ctx, b)
+        FileLogger.write(TAG, "GUIDE_FULL icon=$turnIcon next=$nextTurnIcon dist=$segRemainDist road=$nextRoadName route=$routeRemainDist ETA=$etaText")
+    }
+
     private fun formatRemainTime(minutes: Int): String {
         if (minutes < 60) return "${minutes}分"
         val h = minutes / 60
