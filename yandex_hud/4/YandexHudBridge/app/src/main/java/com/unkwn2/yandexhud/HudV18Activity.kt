@@ -481,10 +481,11 @@ class HudV18Activity : AppCompatActivity() {
         if (dev == null) { log("  $label: device null"); return }
         try {
             val absCls = Class.forName("android.hardware.bydauto.AbsBYDAutoDevice")
-            val getMethod = absCls.getDeclaredMethod("get", IntArray::class.java)
-            getMethod.isAccessible = true
-            val result = getMethod.invoke(dev, intArrayOf(fid))
-            log("  $label get([0x${Integer.toHexString(fid)}]) = $result")
+            // T:SIG confirmed: get(int,int):int is the read method
+            val getM = absCls.getDeclaredMethod("get", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            getM.isAccessible = true
+            val result = getM.invoke(dev, fid shr 16, fid and 0xFFFF)
+            log("  $label get(0x${Integer.toHexString(fid)}) = $result")
         } catch (t: Throwable) {
             val c2 = t.cause ?: t
             log("  $label get ERR: ${c2.javaClass.simpleName}: ${c2.message?.take(80)}")
@@ -915,14 +916,10 @@ class HudV18Activity : AppCompatActivity() {
         if (dev == null) return -1
         return try {
             val absCls = Class.forName("android.hardware.bydauto.AbsBYDAutoDevice")
-            val getM = absCls.getDeclaredMethod("get", IntArray::class.java)
-            getM.isAccessible = true
-            val r = getM.invoke(dev, intArrayOf(fid))
-            when (r) {
-                is Int -> r
-                is Long -> r.toInt()
-                else -> -2
-            }
+            // T:SIG confirmed: get(int,int):int (protected, 2-arg)
+            val g = absCls.getDeclaredMethod("get", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            g.isAccessible = true
+            (g.invoke(dev, fid shr 16, fid and 0xFFFF) as? Int) ?: -1
         } catch (_: Throwable) { -1 }
     }
 
@@ -1209,20 +1206,23 @@ class HudV18Activity : AppCompatActivity() {
     @SuppressLint("PrivateApi")
     private fun canGet(fid: Int): Int {
         try {
-            val dev = testDev ?: run { log("  TestDevice null"); return -1 }
+            val dev = testDev ?: return -1
             val absCls = Class.forName("android.hardware.bydauto.AbsBYDAutoDevice")
-            val getMethod = absCls.getDeclaredMethod("get", IntArray::class.java)
-            getMethod.isAccessible = true
-            val result = getMethod.invoke(dev, intArrayOf(fid))
-            log("  canGet([0x${Integer.toHexString(fid)}]) = $result")
-            return when (result) {
-                is Int -> result
-                is Long -> result.toInt()
-                else -> -1
-            }
+            // T:SIG confirmed: get(int,int):int (protected, 2-arg). get(int[],Class):EventValue (public, 2-arg).
+            // Try get(int,int):int first
+            try {
+                val gm = absCls.getDeclaredMethod("get", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+                gm.isAccessible = true
+                val r = gm.invoke(dev, fid shr 16, fid and 0xFFFF) as? Int
+                if (!r.toString().contains("2147482648")) return r ?: -1
+            } catch (_: Throwable) {}
+            // Fallback: get(int[], Class):BYDAutoEventValue
+            val gm = absCls.getDeclaredMethod("get", IntArray::class.java, Class::class.java)
+            gm.isAccessible = true
+            val evt = gm.invoke(dev, intArrayOf(fid), Class.forName("android.hardware.bydauto.BYDAutoEventValue"))
+            val f = evt.javaClass.getDeclaredField("intValue"); f.isAccessible = true
+            return f.getInt(evt)
         } catch (t: Throwable) {
-            val c2 = t.cause ?: t
-            log("  canGet ERR: ${c2.javaClass.simpleName}: ${c2.message?.take(80)}")
             return -1
         }
     }
