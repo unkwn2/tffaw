@@ -323,7 +323,7 @@ class HudV18Activity : AppCompatActivity() {
         btn("B3:Full") { Thread { HudBroadcaster.sendTestFull(this@HudV18Activity) }.start() }
         btn("B4:Stop") { Thread { HudBroadcaster.sendTestStop(this@HudV18Activity) }.start() }
         btn("B5:Sweep") { Thread { HudBroadcaster.sendIconSweep(this@HudV18Activity) }.start() }
-        btn("B0:QB") { tstBcast() }
+        btn("B0:QB") { Thread { HudBroadcaster.sendTestFull(this@HudV18Activity) }.start() }
 
         // === Instrument/Setting (BLOCKED for uid 10168) ===
         btn("1:Inst") { instActivate() }
@@ -769,8 +769,6 @@ class HudV18Activity : AppCompatActivity() {
         canSet(FIDs.SET_NAVI_SCREEN_STATUS_SET, 0)
     }
 
-    // === T:SIG — dump TestDevice API signatures ===
-
     // === T:BCAST — diagnostic broadcast to AmapService ===
 
     private fun readMany(fids: List<Int>): String {
@@ -781,66 +779,25 @@ class HudV18Activity : AppCompatActivity() {
     }
 
     private fun tstBcast() {
-        log("=== T:BCAST: AUTONAVI_STANDARD_BROADCAST_SEND ===")
+        log("=== T:BCAST: diagnostic + sendTestFull ===")
         Thread {
             val action = "AUTONAVI_STANDARD_BROADCAST_SEND"
-            val intent = Intent(action)
-            val resolved = packageManager.queryBroadcastReceivers(intent, 0)
+            val resolved = packageManager.queryBroadcastReceivers(Intent(action), 0)
             log("Receivers for $action: ${resolved.size}")
             for (ri in resolved) {
-                log("  ${ri.activityInfo.packageName}/${ri.activityInfo.name}")
-                log("    exported=${ri.activityInfo.exported} perm=${ri.activityInfo.permission}")
+                log("  ${ri.activityInfo.packageName}/${ri.activityInfo.name} exported=${ri.activityInfo.exported} perm=${ri.activityInfo.permission}")
             }
             if (resolved.isEmpty()) {
-                log("FAIL: no receivers visible — check exported/permission")
+                log("FAIL: no receivers visible — check <queries> in manifest")
                 return@Thread
             }
-
-            // Phase 1: Start navi frame
-            val startIntent = Intent(action).apply {
-                putExtra("KEY_TYPE", 1)
-                putExtra("EXTRA_STATE", 1)
-                putExtra("IS_BYD_MAP", true)
-                putExtra("IS_BYD_BAIDU_MAP", false)
-                putExtra("EXTRA_IS_FOREGROUND", 1)
-            }
-            sendBroadcast(startIntent)
-            log("Sent start frame (KEY_TYPE=1)")
-            Thread.sleep(300L)
-
-            val pre = readMany(listOf(
-                0x4C10E036, 0x4C10E015, 0x43E0003A, 0x43E00038, 0x0780E026
-            ))
-            log("AFTER start frame: $pre")
-
-            // Phase 2: Guidance frame
-            val guideIntent = Intent(action).apply {
-                putExtra("KEY_TYPE", 2)
-                putExtra("EXTRA_STATE", 2)
-                putExtra("IS_BYD_MAP", true)
-                putExtra("NEW_ICON", 2)
-                putExtra("NEXT_ROAD_NAME", "Testovaya ul.")
-                putExtra("NEXT_SEG_REMAIN_DIS", 500)
-                putExtra("ROUTE_REMAIN_DIS", 5000)
-                putExtra("ROUTE_REMAIN_TIME", "15")
-                putExtra("ETA_TEXT", "12:30")
-                putExtra("SEG_REMAIN_DIS_AUTO", 500)
-                putExtra("ROUTE_REMAIN_DIS_AUTO", 5000)
-                putExtra("ROUTE_REMAIN_TIME_AUTO", 900)
-                putExtra("EXTRA_IS_FOREGROUND", 1)
-            }
-            sendBroadcast(guideIntent)
-            log("Sent guidance frame (KEY_TYPE=2)")
-            Thread.sleep(500L)
-
-            val post = readMany(listOf(
-                0x43F01010, 0x43F01018, 0x43FA1008, 0x43F02028, 0x43E0003A
-            ))
-            log("AFTER guidance frame: $post")
-
+            val pre = readMany(listOf(0x4C10E036, 0x4C10E015, 0x43E0003A, 0x43E00038, 0x0780E026))
+            log("BEFORE: $pre")
+            HudBroadcaster.sendTestFull(this@HudV18Activity)
+            Thread.sleep(800L)
+            val post = readMany(listOf(0x43F01010, 0x43F01018, 0x43FA1008, 0x43F02028, 0x43E0003A))
+            log("AFTER:  $post")
             log("=== LOOK AT HUD + cluster NOW! ===")
-            Thread.sleep(5000L)
-            log("=== T:BCAST DONE ===")
         }.start()
     }
 
@@ -849,37 +806,73 @@ class HudV18Activity : AppCompatActivity() {
     private fun tstDiag() {
         log("=== T:DIAG: Permissions + Error Codes ===")
         Thread {
-            // Decode -2147482648
-            val rc = -2147483648
-            log(" Set return -2147482648 = 0x${Integer.toHexString(rc)}")
-            log("   = ${rc and 0x7FFFFFFF.toInt()} + sign bit")
-            log("   = potentially TEST_COMMAND_FAILED or INVAILD_INT")
+            // 1) Real set() to compare against constants
+            runCatching {
+                val td = testDev ?: run {
+                    val tdCls = Class.forName("android.hardware.bydauto.test.BYDAutoTestDevice")
+                    val gi = tdCls.getDeclaredMethod("getInstance", Context::class.java)
+                    gi.isAccessible = true
+                    gi.invoke(null, this@HudV18Activity)
+                }
+                val absCls = Class.forName("android.hardware.bydauto.AbsBYDAutoDevice")
+                val evCls = Class.forName("android.hardware.bydauto.BYDAutoEventValue")
+                val ev = evCls.getDeclaredConstructor().apply { isAccessible = true }.newInstance()
+                evCls.getDeclaredField("intValue").apply { isAccessible = true }.set(ev, 1)
+                val setM = absCls.getDeclaredMethod("set", IntArray::class.java, evCls)
+                setM.isAccessible = true
+                val rc = setM.invoke(td, intArrayOf(0x0780E026), ev) as Int
+                log("set(0x780E026, 1) rc=$rc (0x${Integer.toHexString(rc)})")
+                when (rc) {
+                    0           -> log("  -> SUCCESS")
+                    -2147482648 -> log("  -> TEST_COMMAND_FAILED (expected for this uid)")
+                    -2147482647 -> log("  -> BUSY")
+                    -2147482646 -> log("  -> TIMEOUT")
+                    -2147482645 -> log("  -> INVALID_VALUE")
+                    else        -> log("  -> UNKNOWN rc")
+                }
+            }.onFailure { log("set() ERR: ${it.javaClass.simpleName}: ${it.message}") }
+
+            // 2) Real permission name from each device
+            for ((cls, label) in listOf(
+                "android.hardware.bydauto.test.BYDAutoTestDevice" to "TestDevice",
+                "android.hardware.bydauto.instrument.BYDAutoInstrumentDevice" to "InstrumentDevice",
+                "android.hardware.bydauto.setting.BYDAutoSettingDevice" to "SettingDevice"
+            )) {
+                runCatching {
+                    val c = Class.forName(cls)
+                    val gi = c.getDeclaredMethod("getInstance", Context::class.java)
+                    gi.isAccessible = true
+                    val inst = gi.invoke(null, this@HudV18Activity)
+                    val getPerm = c.getMethod("getSetPermission")
+                    val perm = getPerm.invoke(inst)
+                    log("$label.getSetPermission() = $perm")
+                }.onFailure { log("$label perm ERR: ${it.message}") }
+            }
+
+            // 3) checkSelfPermission for all 6
+            val perms = listOf(
+                "android.permission.BYDAUTO_TEST_GET",
+                "android.permission.BYDAUTO_TEST_SET",
+                "android.permission.BYDAUTO_INSTRUMENT_GET",
+                "android.permission.BYDAUTO_INSTRUMENT_SET",
+                "android.permission.BYDAUTO_SETTING_GET",
+                "android.permission.BYDAUTO_SETTING_SET"
+            )
+            for (p in perms) {
+                val res = checkSelfPermission(p)
+                log("perm $p = ${if (res == 0) "GRANTED" else "DENIED($res)"}")
+            }
+
+            // 4) Dump TestDevice constants
             try {
                 val tdCls = Class.forName("android.hardware.bydauto.test.BYDAutoTestDevice")
-                log(" TestDevice constants:")
+                log("TestDevice constants:")
                 for (f in tdCls.declaredFields) {
                     f.isAccessible = true
                     try { log("  ${f.name} = ${f.getInt(null)}") } catch (_: Throwable) {}
                 }
-            } catch (t: Throwable) {
-                log("  constants dump ERR: ${t.message}")
-            }
-            try {
-                val evCls = Class.forName("android.hardware.bydauto.BYDAutoEventValue")
-                log(" EventValue constants:")
-                for (f in evCls.declaredFields) {
-                    f.isAccessible = true
-                    try { log("  ${f.name} = ${f.get(null)}") } catch (_: Throwable) {}
-                }
-            } catch (_: Throwable) {}
-            try {
-                val getPerm = testDev?.javaClass?.getMethod("getSetPermission")?.invoke(testDev)
-                log(" TestDevice.setPermission = $getPerm")
-            } catch (_: Throwable) {}
-            try {
-                val pm = applicationContext.checkCallingOrSelfPermission("android.permission.BYDAUTO_TEST")
-                log(" check BYDAUTO_TEST = ${if (pm == 0) "GRANTED" else "DENIED ($pm)"}")
-            } catch (_: Throwable) {}
+            } catch (t: Throwable) { log("constants dump err: ${t.message}") }
+
             log("=== T:DIAG DONE ===")
         }.start()
     }

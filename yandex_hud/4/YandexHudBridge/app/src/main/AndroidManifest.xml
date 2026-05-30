@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.BYDAUTO_TEST_GET" />
     <uses-permission android:name="android.permission.BYDAUTO_TEST_SET" />
+    <uses-permission android:name="android.permission.BYDAUTO_INSTRUMENT_GET" />
+    <uses-permission android:name="android.permission.BYDAUTO_INSTRUMENT_SET" />
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_COMMON" />
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_SET" />
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_GET" />
@@ -14,6 +17,7 @@
         <package android:name="com.byd.amapservice" />
         <package android:name="com.byd.launchermap" />
         <package android:name="com.van.diplus" />
+        <package android:name="com.byd.autovoice" />
         <intent>
             <action android:name="action.com.byd.protocol.ProtocolService" />
         </intent>

@@ -60,7 +60,7 @@ object HudBroadcaster {
             putInt("ROUTE_REMAIN_DIS", routeRemainDist)
             putInt("ROUTE_REMAIN_TIME", routeRemainTime)
             putString("ETA_TEXT", etaText)
-            putString("ROUTE_REMAIN_TIME_AUTO", etaText)
+            putString("ROUTE_REMAIN_TIME_AUTO", formatRemainTime(routeRemainTime))
             putString("ROUTE_REMAIN_DIS_AUTO", "${routeRemainDist}米")
             putString("SEG_REMAIN_DIS_AUTO", "${distanceMeters}米")
             putInt("ROUNG_ABOUT_NUM", -1)
@@ -100,10 +100,17 @@ object HudBroadcaster {
                 nextRoadName = "Test $i",
                 routeRemainDist = 10000,
                 routeRemainTime = 30,
-                etaText = "预计今天15时0分到达"
+                etaText = "预计今天15时00分到达"
             )
             Thread.sleep(800)
         }
+    }
+
+    private fun formatRemainTime(minutes: Int): String {
+        if (minutes < 60) return "${minutes}分"
+        val h = minutes / 60
+        val m = minutes % 60
+        return if (m == 0) "${h}时" else "${h}时${m}分"
     }
 
     private fun send(ctx: Context, extras: Bundle) {
