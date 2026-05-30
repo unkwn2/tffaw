@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.BYDAUTO_INSTRUMENT_COMMON" />
-    <uses-permission android:name="android.permission.BYDAUTO_INSTRUMENT_SET" />
-    <uses-permission android:name="android.permission.BYDAUTO_INSTRUMENT_GET" />
-    <uses-permission android:name="android.permission.BYDAutoInstrumentDevice" />
-    <uses-permission android:name="com.byd.permission.BYDAUTO_INSTRUMENT_COMMON" />
-    <uses-permission android:name="com.byd.permission.BYDAUTO_INSTRUMENT_SET" />
-    <uses-permission android:name="com.byd.permission.BYDAUTO_INSTRUMENT_GET" />
-    <uses-permission android:name="com.byd.permission.BYDAutoInstrumentDevice" />
     <uses-permission android:name="android.permission.BYDAUTO_TEST_SET" />
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_COMMON" />
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_SET" />

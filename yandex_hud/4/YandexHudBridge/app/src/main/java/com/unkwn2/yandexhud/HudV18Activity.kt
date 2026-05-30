@@ -317,10 +317,13 @@ class HudV18Activity : AppCompatActivity() {
         btn("T4:Scr3") { tstScreenNavi() }
         btn("T5:Scr0") { tstScreenOff() }
 
-        // === C Broadcast (proven: reaches cluster) ===
-        btn("CB+") { cbSend(2, 0) }
-        btn("CBS") { cbFullSequence() }
-        btn("CB-") { cbSend(4, 0) }
+        // === Broadcast to AmapService ===
+        btn("B1:Start") { Thread { HudBroadcaster.sendNaviStart(this@HudV18Activity) }.start() }
+        btn("B2:Guide") { Thread { HudBroadcaster.sendGuideInfo(this@HudV18Activity, 3, 500, "ул. Ленина", 15000, 45, "预计今天14时30分到达") }.start() }
+        btn("B3:Full") { Thread { HudBroadcaster.sendTestFull(this@HudV18Activity) }.start() }
+        btn("B4:Stop") { Thread { HudBroadcaster.sendTestStop(this@HudV18Activity) }.start() }
+        btn("B5:Sweep") { Thread { HudBroadcaster.sendIconSweep(this@HudV18Activity) }.start() }
+        btn("B0:QB") { tstBcast() }
 
         // === Instrument/Setting (BLOCKED for uid 10168) ===
         btn("1:Inst") { instActivate() }
